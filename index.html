@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -723,7 +723,8 @@
     if(!currentUser) return;
     try {
       const q = query(collection(db,'clientes'), where('uid','==',currentUser.uid));
-      onSnapshot(q, snap => {
+      // Força atualização imediata
+      onSnapshot(q, {includeMetadataChanges: false}, snap => {
         todosClientes = snap.docs.map(d=>({id:d.id,...d.data()}));
         renderClientes(todosClientes);
         atualizarStats();
