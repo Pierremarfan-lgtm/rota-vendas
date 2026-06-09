@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROTA & VENDAS</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#F4F4F4; --white:#FFFFFF; --black:#111111; --dark:#1A1A1A;
+    --mid:#444444; --gray:#888888; --lgray:#CCCCCC; --xlight:#EEEEEE;
+    --green:#1A7A40; --red:#CC2222; --shadow:0 2px 12px rgba(0,0,0,0.09);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--dark); min-height:100vh; overflow-x:hidden; }
+
+  /* ── SCREENS ── */
+  .screen { display:none; min-height:100vh; }
+  .screen.active { display:block; }
+
+  /* ══════════════════════════════
+     LOGIN SCREEN
+  ══════════════════════════════ */
+  .login-screen {
+    background:var(--white);
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    min-height:100vh; padding:40px 28px;
+  }
+
+  .login-logo { display:flex; flex-direction:column; align-items:center; margin-bottom:36px; }
+
+  .login-compass {
+    width:90px; height:90px; margin-bottom:14px;
+    filter:drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+  }
+
+  .login-title {
+    font-family:'Bebas Neue',sans-serif;
+    font-size:42px; letter-spacing:4px; color:var(--black); line-height:1;
+  }
+  .login-sub {
+    font-size:11px; color:var(--gray); letter-spacing:3px;
+    text-transform:uppercase; font-weight:700; margin-top:4px;
+  }
+
+  .login-form { width:100%; max-width:360px; }
+
+  .login-tabs {
+    display:flex; gap:0; background:var(--xlight);
+    border-radius:12px; padding:4px; margin-bottom:22px;
+  }
+  .ltab {
+    flex:1; padding:9px; border-radius:9px; border:none;
+    font-family:'Nunito',sans-serif; font-size:13px; font-weight:800;
+    cursor:pointer; transition:all .2s; background:transparent; color:var(--gray);
+  }
+  .ltab.active { background:var(--white); color:var(--black); box-shadow:var(--shadow); }
+
+  .lfield { margin-bottom:14px; }
+  .lfield label { font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:5px; }
+  .lfield input {
+    width:100%; padding:14px 16px;
+    border:2px solid var(--xlight); border-radius:13px;
+    background:var(--bg); color:var(--dark);
+    font-family:'Nunito',sans-serif; font-size:15px; font-weight:700;
+    outline:none; transition:all .2s;
+  }
+  .lfield input:focus { border-color:var(--black); background:var(--white); }
+  .lfield input::placeholder { color:var(--lgray); }
+
+  .login-btn {
+    width:100%; padding:16px; border-radius:13px; border:none;
+    background:var(--black); color:#fff;
+    font-family:'Nunito',sans-serif; font-size:16px; font-weight:900;
+    letter-spacing:.5px; cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,.25); transition:all .2s;
+    margin-top:4px;
+  }
+  .login-btn:active { transform:scale(.97); }
+
+  .login-msg { text-align:center; font-size:13px; font-weight:700; margin-top:12px; min-height:20px; }
+  .login-msg.error { color:var(--red); }
+  .login-msg.success { color:var(--green); }
+
+  .login-forgot { text-align:center; margin-top:14px; font-size:13px; color:var(--gray); font-weight:700; cursor:pointer; }
+
+  /* ══════════════════════════════
+     MAIN APP
+  ══════════════════════════════ */
+
+  /* HEADER */
+  .header {
+    background:var(--white); padding:14px 18px 12px;
+    box-shadow:0 2px 10px rgba(0,0,0,.07);
+    position:sticky; top:0; z-index:50;
+  }
+  .header-row { display:flex; align-items:center; gap:12px; }
+  .compass-sm { width:48px; height:48px; flex-shrink:0; filter:drop-shadow(0 2px 5px rgba(0,0,0,.15)); }
+  .header-text { flex:1; }
+  .header-title { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:2px; line-height:1; color:var(--black); }
+  .header-sub { font-size:10px; color:var(--gray); letter-spacing:3px; text-transform:uppercase; font-weight:700; }
+  .user-btn {
+    width:38px; height:38px; border-radius:50%; border:2px solid var(--xlight);
+    background:var(--black); color:#fff;
+    font-family:'Bebas Neue',sans-serif; font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+
+  /* TABS */
+  .app-tabs {
+    display:flex; background:var(--white);
+    border-bottom:1px solid var(--xlight);
+    overflow-x:auto; scrollbar-width:none;
+  }
+  .app-tabs::-webkit-scrollbar { display:none; }
+  .app-tab {
+    flex-shrink:0; padding:12px 18px; border:none; background:transparent;
+    font-family:'Nunito',sans-serif; font-size:12px; font-weight:800;
+    color:var(--gray); cursor:pointer; transition:all .2s;
+    border-bottom:3px solid transparent; letter-spacing:.3px; text-transform:uppercase;
+  }
+  .app-tab.active { color:var(--black); border-bottom-color:var(--black); }
+
+  /* TAB CONTENTS */
+  .tab-pane { display:none; padding-bottom:90px; }
+  .tab-pane.active { display:block; }
+
+  /* ── INÍCIO ── */
+  .gps-bar {
+    margin:12px 16px 0;
+    background:var(--white); border-radius:13px;
+    padding:10px 14px; box-shadow:var(--shadow);
+    display:flex; align-items:center; gap:10px;
+  }
+  .gps-dot { width:8px; height:8px; border-radius:50%; background:#111; animation:blink 1.5s infinite; flex-shrink:0; }
+  @keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
+  .gps-txt { flex:1; font-size:12px; font-weight:800; color:var(--mid); }
+  .gps-badge { font-size:10px; font-weight:800; color:var(--gray); background:var(--xlight); padding:3px 8px; border-radius:6px; }
+
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 16px 0; }
+  .stat { background:var(--white); border-radius:14px; padding:13px 10px; text-align:center; box-shadow:var(--shadow); border-top:3px solid var(--black); }
+  .stat.s2 { border-color:#555; }
+  .stat.s3 { border-color:#999; }
+  .stat-n { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--black); }
+  .stat-l { font-size:9px; font-weight:800; color:var(--gray); letter-spacing:.6px; text-transform:uppercase; margin-top:2px; }
+
+  .sec-row { display:flex; align-items:center; justify-content:space-between; margin:16px 16px 10px; }
+  .sec-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1.5px; color:var(--black); }
+  .sec-link { font-size:12px; font-weight:800; color:var(--mid); letter-spacing:.3px; text-transform:uppercase; cursor:pointer; }
+
+  /* CLIENT CARDS */
+  .clist { display:flex; flex-direction:column; gap:9px; padding:0 16px; }
+  .ccard {
+    display:flex; align-items:center; gap:11px;
+    background:var(--white); border-radius:15px;
+    padding:12px; box-shadow:var(--shadow);
+    cursor:pointer; transition:all .2s;
+    border-left:4px solid var(--lgray);
+  }
+  .ccard.prio { border-color:var(--black); }
+  .ccard.pend { border-color:#666; }
+  .ccard.done { border-color:var(--green); }
+  .ccard:active { transform:scale(.98); }
+  .ccard-emoji { font-size:24px; flex-shrink:0; }
+  .ccard-info { flex:1; min-width:0; }
+  .ccard-name { font-size:14px; font-weight:800; color:var(--black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ccard-addr { font-size:11px; color:var(--gray); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ccard-meta { display:flex; gap:5px; margin-top:4px; }
+  .tag { padding:2px 7px; border-radius:5px; font-size:9px; font-weight:800; text-transform:uppercase; }
+  .tag.prio { background:#111; color:#fff; }
+  .tag.pend { background:#EBEBEB; color:#444; }
+  .tag.done { background:#E0F2E9; color:var(--green); }
+  .tag.dist { background:var(--xlight); color:var(--gray); }
+  .nav-mini { width:32px; height:32px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+
+  /* EMPTY STATE */
+  .empty { display:flex; flex-direction:column; align-items:center; padding:40px 24px; text-align:center; }
+  .empty-icon { font-size:48px; margin-bottom:12px; }
+  .empty-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1.5px; color:var(--black); margin-bottom:5px; }
+  .empty-sub { font-size:13px; color:var(--gray); font-weight:700; line-height:1.5; }
+  .empty-btn { margin-top:18px; padding:12px 24px; border-radius:12px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:13px; font-weight:900; cursor:pointer; }
+
+  /* LOADING */
+  .loading { display:flex; align-items:center; justify-content:center; padding:30px; gap:10px; color:var(--gray); font-weight:700; font-size:13px; }
+  .spin { width:20px; height:20px; border:2px solid var(--xlight); border-top-color:var(--black); border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── CLIENTES TAB ── */
+  .search-wrap { display:flex; align-items:center; gap:10px; background:var(--white); border-radius:13px; padding:10px 14px; box-shadow:var(--shadow); margin:12px 16px 0; }
+  .search-wrap input { flex:1; border:none; outline:none; background:none; font-family:'Nunito',sans-serif; font-size:14px; font-weight:600; color:var(--dark); }
+  .search-wrap input::placeholder { color:var(--lgray); }
+  .search-icon { width:34px; height:34px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+
+  /* ── CADASTRO TAB ── */
+  .form-wrap { padding:14px 16px; }
+  .scard { background:var(--white); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-bottom:12px; }
+  .scard-title { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:12px; display:flex; align-items:center; gap:7px; }
+  .field { margin-bottom:12px; }
+  .field:last-child { margin-bottom:0; }
+  .field label { font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:5px; }
+  .field input, .field select, .field textarea {
+    width:100%; padding:12px 14px; border:2px solid var(--xlight); border-radius:12px;
+    background:var(--bg); color:var(--dark); font-family:'Nunito',sans-serif;
+    font-size:14px; font-weight:700; outline:none; transition:all .2s; -webkit-appearance:none;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color:var(--black); background:var(--white); }
+  .field input::placeholder { color:var(--lgray); font-weight:600; }
+  .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .cep-row { display:flex; gap:8px; }
+  .cep-row input { flex:1; }
+  .cep-btn { width:46px; height:46px; border-radius:12px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; align-self:flex-end; }
+  .cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+  .cat-item { background:var(--bg); border:2px solid var(--xlight); border-radius:12px; padding:10px 6px; text-align:center; cursor:pointer; transition:all .18s; }
+  .cat-item.sel { background:var(--black); border-color:var(--black); }
+  .cat-item .ci { font-size:22px; margin-bottom:3px; }
+  .cat-item .cl { font-size:9px; font-weight:800; color:var(--gray); text-transform:uppercase; }
+  .cat-item.sel .cl { color:rgba(255,255,255,.8); }
+  .pill-group { display:flex; gap:8px; flex-wrap:wrap; }
+  .pill { padding:7px 14px; border-radius:20px; border:2px solid var(--lgray); background:#fff; font-size:12px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .pill.sel { background:var(--black); color:#fff; border-color:var(--black); }
+  .save-btn { width:100%; padding:15px; border-radius:13px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:15px; font-weight:900; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .save-btn:active { transform:scale(.97); }
+  .save-btn:disabled { background:var(--lgray); box-shadow:none; }
+  .cep-msg { font-size:11px; font-weight:700; margin-top:4px; }
+
+  /* ── BOTTOM NAV ── */
+  .bnav { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--white); border-top:1px solid var(--xlight); padding:8px 0 22px; display:flex; justify-content:space-around; align-items:center; box-shadow:0 -4px 20px rgba(0,0,0,.07); }
+  .nitem { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:4px 12px; border-radius:12px; transition:all .2s; position:relative; }
+  .nitem.active { background:#F0F0F0; }
+  .nind { position:absolute; top:-2px; left:50%; transform:translateX(-50%); width:18px; height:3px; background:var(--black); border-radius:0 0 3px 3px; }
+  .nlbl { font-size:9px; font-weight:800; color:var(--gray); letter-spacing:.3px; text-transform:uppercase; }
+  .nitem.active .nlbl { color:var(--black); }
+  .fab { width:52px; height:52px; border-radius:50%; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:-18px; box-shadow:0 6px 18px rgba(0,0,0,.3),0 0 0 5px rgba(0,0,0,.08); }
+
+  /* MODAL */
+  .overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.4); backdrop-filter:blur(5px); display:none; align-items:flex-end; justify-content:center; }
+  .overlay.open { display:flex; }
+  .modal { width:100%; max-width:440px; background:var(--white); border-radius:24px 24px 0 0; padding:20px 18px 34px; animation:up .3s ease; }
+  @keyframes up { from{transform:translateY(100%)}to{transform:translateY(0)} }
+  .mhandle { width:38px; height:4px; background:var(--xlight); border-radius:2px; margin:0 auto 16px; }
+  .mhead { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+  .mavatar { font-size:30px; flex-shrink:0; }
+  .mtitle { font-size:17px; font-weight:900; color:var(--black); }
+  .msub { font-size:12px; color:var(--gray); margin-top:2px; }
+  .mgrid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:14px; }
+  .mitem { background:var(--bg); border-radius:12px; padding:11px; }
+  .mitem-l { font-size:10px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; margin-bottom:3px; }
+  .mitem-v { font-size:13px; font-weight:800; color:var(--black); }
+  .mactions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .mbtn { padding:13px; border-radius:13px; border:none; font-family:'Nunito',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; text-transform:uppercase; }
+  .mbtn.primary { background:var(--black); color:#fff; grid-column:span 2; }
+  .mbtn.sec { background:var(--bg); color:var(--dark); border:1.5px solid var(--lgray); }
+  .mbtn.danger { background:#FFF0F0; color:var(--red); border:1.5px solid #FFD5D5; }
+
+  /* TOAST */
+  .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--black); color:#fff; padding:11px 20px; border-radius:12px; font-size:13px; font-weight:800; z-index:300; opacity:0; transition:all .3s; white-space:nowrap; pointer-events:none; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ══════ LOGIN SCREEN ══════ -->
+<div class="screen active" id="screenLogin">
+<div class="login-screen">
+  <div class="login-logo">
+    <!-- ROSA DOS VENTOS -->
+    <svg class="login-compass" viewBox="0 0 120 120" fill="none">
+      <circle cx="60" cy="60" r="56" stroke="#111" stroke-width="1.8" fill="none"/>
+      <circle cx="60" cy="60" r="50" stroke="#111" stroke-width="0.8" fill="none"/>
+      <circle cx="60" cy="60" r="44" stroke="#111" stroke-width="0.8" fill="none"/>
+      <g stroke="#111" stroke-width="1.2" stroke-linecap="round">
+        <line x1="60" y1="4" x2="60" y2="10"/><line x1="60" y1="110" x2="60" y2="116"/>
+        <line x1="4" y1="60" x2="10" y2="60"/><line x1="110" y1="60" x2="116" y2="60"/>
+        <line x1="99.5" y1="20.5" x2="95" y2="25"/><line x1="20.5" y1="20.5" x2="25" y2="25"/>
+        <line x1="99.5" y1="99.5" x2="95" y2="95"/><line x1="20.5" y1="99.5" x2="25" y2="95"/>
+      </g>
+      <g fill="#111">
+        <circle cx="60" cy="7" r="2.2"/><circle cx="60" cy="113" r="2.2"/>
+        <circle cx="7" cy="60" r="2.2"/><circle cx="113" cy="60" r="2.2"/>
+        <circle cx="98" cy="22" r="1.6"/><circle cx="22" cy="22" r="1.6"/>
+        <circle cx="98" cy="98" r="1.6"/><circle cx="22" cy="98" r="1.6"/>
+        <circle cx="60" cy="15" r="1.2"/><circle cx="60" cy="105" r="1.2"/>
+        <circle cx="15" cy="60" r="1.2"/><circle cx="105" cy="60" r="1.2"/>
+        <circle cx="88" cy="32" r="1.2"/><circle cx="32" cy="32" r="1.2"/>
+        <circle cx="88" cy="88" r="1.2"/><circle cx="32" cy="88" r="1.2"/>
+      </g>
+      <polygon points="60,8 55,60 60,50 65,60" fill="#111"/>
+      <polygon points="60,112 55,60 60,70 65,60" fill="#111"/>
+      <polygon points="112,60 60,55 70,60 60,65" fill="#111"/>
+      <polygon points="8,60 60,55 50,60 60,65" fill="#111"/>
+      <polygon points="60,50 55,60 97,23" fill="#888"/>
+      <polygon points="60,50 65,60 23,23" fill="#888"/>
+      <polygon points="60,70 65,60 97,97" fill="#888"/>
+      <polygon points="60,70 55,60 23,97" fill="#888"/>
+      <polygon points="60,8 60,50 63,60" fill="#555"/>
+      <polygon points="60,112 60,70 57,60" fill="#555"/>
+      <polygon points="112,60 70,60 60,57" fill="#555"/>
+      <polygon points="8,60 50,60 60,63" fill="#555"/>
+      <circle cx="60" cy="60" r="8" fill="#111" stroke="white" stroke-width="2"/>
+      <circle cx="60" cy="60" r="4" fill="white"/>
+      <circle cx="60" cy="60" r="2" fill="#111"/>
+      <text x="54.5" y="32" fill="#111" font-size="11" font-family="Bebas Neue,serif" font-weight="700">N</text>
+      <text x="54.5" y="96" fill="#111" font-size="10" font-family="Bebas Neue,serif">S</text>
+      <text x="16" y="64" fill="#111" font-size="10" font-family="Bebas Neue,serif">O</text>
+      <text x="98" y="64" fill="#111" font-size="10" font-family="Bebas Neue,serif">L</text>
+      <text x="84" y="36" fill="#555" font-size="7" font-family="Bebas Neue,serif">NE</text>
+      <text x="22" y="36" fill="#555" font-size="7" font-family="Bebas Neue,serif">NO</text>
+      <text x="84" y="93" fill="#555" font-size="7" font-family="Bebas Neue,serif">SE</text>
+      <text x="22" y="93" fill="#555" font-size="7" font-family="Bebas Neue,serif">SO</text>
+    </svg>
+    <div class="login-title">ROTA &amp; VENDAS</div>
+    <div class="login-sub">Sistema de Roteirização</div>
+  </div>
+
+  <div class="login-form">
+    <div class="login-tabs">
+      <button class="ltab active" onclick="setLoginTab('entrar',this)">Entrar</button>
+      <button class="ltab" onclick="setLoginTab('cadastrar',this)">Criar Conta</button>
+    </div>
+
+    <!-- ENTRAR -->
+    <div id="formEntrar">
+      <div class="lfield">
+        <label>E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com">
+      </div>
+      <div class="lfield">
+        <label>Senha</label>
+        <input type="password" id="loginSenha" placeholder="••••••••">
+      </div>
+      <button class="login-btn" onclick="fazerLogin()" id="btnLogin">ENTRAR</button>
+      <div class="login-msg" id="loginMsg"></div>
+      <div class="login-forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
+    </div>
+
+    <!-- CADASTRAR -->
+    <div id="formCadastrar" style="display:none">
+      <div class="lfield">
+        <label>Nome Completo</label>
+        <input type="text" id="cadNome" placeholder="Seu nome">
+      </div>
+      <div class="lfield">
+        <label>E-mail</label>
+        <input type="email" id="cadEmail" placeholder="seu@email.com">
+      </div>
+      <div class="lfield">
+        <label>Senha</label>
+        <input type="password" id="cadSenha" placeholder="Mínimo 6 caracteres">
+      </div>
+      <button class="login-btn" onclick="criarConta()" id="btnCadastrar">CRIAR CONTA</button>
+      <div class="login-msg" id="cadMsg"></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════ APP SCREEN ══════ -->
+<div class="screen" id="screenApp">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-row">
+      <svg class="compass-sm" viewBox="0 0 120 120" fill="none">
+        <circle cx="60" cy="60" r="56" stroke="#111" stroke-width="1.8" fill="none"/>
+        <circle cx="60" cy="60" r="50" stroke="#111" stroke-width="0.8" fill="none"/>
+        <polygon points="60,8 55,60 60,50 65,60" fill="#111"/>
+        <polygon points="60,112 55,60 60,70 65,60" fill="#111"/>
+        <polygon points="112,60 60,55 70,60 60,65" fill="#111"/>
+        <polygon points="8,60 60,55 50,60 60,65" fill="#111"/>
+        <polygon points="60,50 55,60 97,23" fill="#888"/>
+        <polygon points="60,50 65,60 23,23" fill="#888"/>
+        <polygon points="60,70 65,60 97,97" fill="#888"/>
+        <polygon points="60,70 55,60 23,97" fill="#888"/>
+        <circle cx="60" cy="60" r="8" fill="#111" stroke="white" stroke-width="2"/>
+        <circle cx="60" cy="60" r="3" fill="white"/>
+        <text x="54.5" y="32" fill="#111" font-size="11" font-family="Bebas Neue,serif" font-weight="700">N</text>
+      </svg>
+      <div class="header-text">
+        <div class="header-title">ROTA &amp; VENDAS</div>
+        <div class="header-sub">Sistema de Roteirização</div>
+      </div>
+      <div class="user-btn" id="userInitial" onclick="openUserMenu()">U</div>
+    </div>
+  </div>
+
+  <!-- APP TABS -->
+  <div class="app-tabs">
+    <button class="app-tab active" onclick="setAppTab('inicio',this)">🏠 Início</button>
+    <button class="app-tab" onclick="setAppTab('clientes',this)">👥 Clientes</button>
+    <button class="app-tab" onclick="setAppTab('cadastro',this)">➕ Cadastrar</button>
+    <button class="app-tab" onclick="setAppTab('roteiro',this)">🗓️ Roteiro</button>
+  </div>
+
+  <!-- ── TAB: INÍCIO ── -->
+  <div class="tab-pane active" id="tab-inicio">
+    <div class="gps-bar">
+      <div class="gps-dot"></div>
+      <div class="gps-txt" id="gpsLocation">Obtendo localização...</div>
+      <div class="gps-badge">GPS</div>
+    </div>
+    <div class="stats">
+      <div class="stat s1"><div class="stat-n" id="statTotal">0</div><div class="stat-l">Clientes</div></div>
+      <div class="stat s2"><div class="stat-n" id="statHoje">0</div><div class="stat-l">Hoje</div></div>
+      <div class="stat s3"><div class="stat-n" id="statPrio">0</div><div class="stat-l">Prioritários</div></div>
+    </div>
+    <div class="sec-row">
+      <div class="sec-title">CLIENTES RECENTES</div>
+      <div class="sec-link" onclick="setAppTab('clientes', document.querySelectorAll('.app-tab')[1])">VER TODOS →</div>
+    </div>
+    <div class="clist" id="listaInicio">
+      <div class="loading"><div class="spin"></div>Carregando...</div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CLIENTES ── -->
+  <div class="tab-pane" id="tab-clientes">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="#AAA" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="#AAA" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <input type="text" id="searchInput" placeholder="Buscar cliente..." oninput="filtrarClientes()">
+      <button class="search-icon">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.5"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div style="padding:10px 16px 0">
+      <div class="clist" id="listaClientes">
+        <div class="loading"><div class="spin"></div>Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: CADASTRO ── -->
+  <div class="tab-pane" id="tab-cadastro">
+    <div class="form-wrap">
+
+      <div class="scard">
+        <div class="scard-title">🏪 Estabelecimento</div>
+        <div class="field">
+          <label>Nome <span style="color:red">*</span></label>
+          <input type="text" id="cNome" placeholder="Ex: Salão Bella Mia">
+        </div>
+        <div class="field">
+          <label>Responsável</label>
+          <input type="text" id="cResp" placeholder="Nome do proprietário">
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Telefone <span style="color:red">*</span></label>
+            <input type="tel" id="cTel" placeholder="(22) 99999-9999" oninput="maskPhone(this)">
+          </div>
+          <div class="field">
+            <label>WhatsApp</label>
+            <input type="tel" id="cWpp" placeholder="(22) 99999-9999" oninput="maskPhone(this)">
+          </div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="scard-title">🏷️ Categoria</div>
+        <div class="cat-grid">
+          <div class="cat-item sel" onclick="selCat(this,'salao')"><div class="ci">💇‍♀️</div><div class="cl">Salão</div></div>
+          <div class="cat-item" onclick="selCat(this,'barbearia')"><div class="ci">💈</div><div class="cl">Barbearia</div></div>
+          <div class="cat-item" onclick="selCat(this,'estetica')"><div class="ci">💅</div><div class="cl">Estética</div></div>
+          <div class="cat-item" onclick="selCat(this,'clinica')"><div class="ci">🏥</div><div class="cl">Clínica</div></div>
+          <div class="cat-item" onclick="selCat(this,'spa')"><div class="ci">🧘</div><div class="cl">Spa</div></div>
+          <div class="cat-item" onclick="selCat(this,'outro')"><div class="ci">🏪</div><div class="cl">Outro</div></div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="scard-title">📍 Endereço</div>
+        <div class="field">
+          <label>CEP <span style="color:red">*</span></label>
+          <div class="cep-row">
+            <input type="tel" id="cCep" placeholder="00000-000" oninput="maskCep(this)" maxlength="9">
+            <button class="cep-btn" onclick="buscarCep()">
+              <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+          <div class="cep-msg" id="cepMsg"></div>
+        </div>
+        <div class="field"><label>Logradouro</label><input type="text" id="cLog" placeholder="Rua, Avenida..."></div>
+        <div class="field-row">
+          <div class="field"><label>Número</label><input type="text" id="cNum" placeholder="Ex: 142"></div>
+          <div class="field"><label>Bairro</label><input type="text" id="cBairro" placeholder="Bairro"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Cidade</label><input type="text" id="cCidade" placeholder="Cidade"></div>
+          <div class="field"><label>UF</label><input type="text" id="cUF" placeholder="RJ" maxlength="2" style="text-transform:uppercase"></div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="scard-title">⭐ Prioridade</div>
+        <div class="pill-group">
+          <div class="pill sel" onclick="selPill(this)">🔴 Alta</div>
+          <div class="pill" onclick="selPill(this)">🟡 Média</div>
+          <div class="pill" onclick="selPill(this)">⚪ Baixa</div>
+        </div>
+      </div>
+
+      <div class="scard">
+        <div class="scard-title">📝 Observações</div>
+        <div class="field" style="margin:0">
+          <textarea id="cObs" rows="3" placeholder="Informações importantes..."></textarea>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="salvarCliente()" id="btnSalvar">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        SALVAR CLIENTE
+      </button>
+    </div>
+  </div>
+
+  <!-- ── TAB: ROTEIRO ── -->
+  <div class="tab-pane" id="tab-roteiro">
+    <div class="sec-row" style="margin-top:14px">
+      <div class="sec-title">ROTEIRO DE HOJE</div>
+    </div>
+    <div class="clist" id="listaRoteiro">
+      <div class="empty">
+        <div class="empty-icon">🗓️</div>
+        <div class="empty-title">SEM ROTEIRO HOJE</div>
+        <div class="empty-sub">Adicione clientes ao roteiro<br>na aba Clientes</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bnav">
+    <div class="nitem active" id="nav-inicio" onclick="setAppTab('inicio',null,this)">
+      <div class="nind"></div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M3 12L12 3l9 9" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9a1 1 0 001 1h4v-4h4v4h4a1 1 0 001-1v-9" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="nlbl" style="color:#111">Início</div>
+    </div>
+    <div class="nitem" id="nav-clientes" onclick="setAppTab('clientes',null,this)">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#AAA" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#AAA" stroke-width="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#AAA" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="nlbl">Clientes</div>
+    </div>
+    <div class="nitem" onclick="setAppTab('cadastro',null,this)">
+      <button class="fab"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="nitem" id="nav-roteiro" onclick="setAppTab('roteiro',null,this)">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="#AAA" stroke-width="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="#AAA" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="nlbl">Roteiro</div>
+    </div>
+    <div class="nitem" id="nav-perfil" onclick="openUserMenu()">
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="#AAA" stroke-width="1.8"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#AAA" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <div class="nlbl">Perfil</div>
+    </div>
+  </nav>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="overlay" id="ovCliente" onclick="closeOv('ovCliente',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mhead">
+      <div class="mavatar" id="mEmoji"></div>
+      <div><div class="mtitle" id="mNome"></div><div class="msub" id="mAddr"></div></div>
+    </div>
+    <div class="mgrid">
+      <div class="mitem"><div class="mitem-l">📞 Telefone</div><div class="mitem-v" id="mTel"></div></div>
+      <div class="mitem"><div class="mitem-l">🏷️ Categoria</div><div class="mitem-v" id="mCat"></div></div>
+      <div class="mitem"><div class="mitem-l">⭐ Prioridade</div><div class="mitem-v" id="mPrio"></div></div>
+      <div class="mitem"><div class="mitem-l">📅 Cadastro</div><div class="mitem-v" id="mData"></div></div>
+    </div>
+    <div class="mactions">
+      <button class="mbtn primary" onclick="closeOv('ovCliente');openGps()">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="white"/></svg>
+        INICIAR ROTA GPS
+      </button>
+      <button class="mbtn sec" onclick="addRoteiro()">📋 Add Roteiro</button>
+      <button class="mbtn danger" onclick="deletarCliente()">🗑 Excluir</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL GPS -->
+<div class="overlay" id="ovGps" onclick="closeOv('ovGps',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div style="text-align:center;padding:4px 0 14px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px">ABRIR ROTA EM</div>
+      <div style="font-size:13px;color:var(--gray);font-weight:700">Escolha o app de navegação</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+      <button style="background:#E8F4FF;color:#1565C0;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirGoogleMaps()"><span style="font-size:20px">🗺️</span>Google Maps</button>
+      <button style="background:#E8FFF4;color:#1B6B45;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirWaze()"><span style="font-size:20px">🔵</span>Waze</button>
+    </div>
+    <button style="width:100%;background:var(--xlight);color:var(--dark);border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:13px;border-radius:13px;cursor:pointer" onclick="closeOv('ovGps')">Cancelar</button>
+  </div>
+</div>
+
+<!-- MODAL USER -->
+<div class="overlay" id="ovUser" onclick="closeOv('ovUser',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div style="text-align:center;padding:4px 0 16px">
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--black);color:#fff;font-family:'Bebas Neue',sans-serif;font-size:26px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px" id="userAvatarBig">U</div>
+      <div style="font-size:16px;font-weight:900;color:var(--black)" id="userName">Usuário</div>
+      <div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:2px" id="userEmail">-</div>
+    </div>
+    <button style="width:100%;padding:13px;border-radius:13px;border:none;background:#FFF0F0;color:var(--red);font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onclick="fazerLogout()">
+      <svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      SAIR DA CONTA
+    </button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
+  import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, orderBy, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD4aFJauyLXGBRWiQ6JawG-wBcMYnwrpM8",
+    authDomain: "rota-vendas.firebaseapp.com",
+    projectId: "rota-vendas",
+    storageBucket: "rota-vendas.firebasestorage.app",
+    messagingSenderId: "819879636865",
+    appId: "1:819879636865:web:1d5dad538e1ab8995e4280"
+  };
+
+  const app  = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db   = getFirestore(app);
+
+  // ── ESTADO GLOBAL
+  let currentUser = null;
+  let todosClientes = [];
+  let clienteSelecionado = null;
+  const catEmojis = { salao:'💇‍♀️', barbearia:'💈', estetica:'💅', clinica:'🏥', spa:'🧘', outro:'🏪' };
+
+  // ── AUTH STATE
+  onAuthStateChanged(auth, user => {
+    if(user) {
+      currentUser = user;
+      document.getElementById('screenLogin').classList.remove('active');
+      document.getElementById('screenApp').classList.add('active');
+      const inicial = (user.displayName||user.email||'U')[0].toUpperCase();
+      document.getElementById('userInitial').textContent = inicial;
+      document.getElementById('userAvatarBig').textContent = inicial;
+      document.getElementById('userName').textContent = user.displayName || 'Usuário';
+      document.getElementById('userEmail').textContent = user.email;
+      carregarClientes();
+      obterLocalizacao();
+    } else {
+      currentUser = null;
+      document.getElementById('screenApp').classList.remove('active');
+      document.getElementById('screenLogin').classList.add('active');
+    }
+  });
+
+  // ── LOGIN
+  window.fazerLogin = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const msg   = document.getElementById('loginMsg');
+    const btn   = document.getElementById('btnLogin');
+    if(!email||!senha) { msg.textContent='Preencha todos os campos'; msg.className='login-msg error'; return; }
+    btn.textContent='Entrando...'; btn.disabled=true;
+    try {
+      await signInWithEmailAndPassword(auth, email, senha);
+    } catch(e) {
+      const erros = { 'auth/invalid-credential':'E-mail ou senha incorretos', 'auth/user-not-found':'Usuário não encontrado', 'auth/wrong-password':'Senha incorreta', 'auth/invalid-email':'E-mail inválido' };
+      msg.textContent = erros[e.code]||'Erro ao entrar. Tente novamente.';
+      msg.className='login-msg error';
+      btn.textContent='ENTRAR'; btn.disabled=false;
+    }
+  };
+
+  // ── CRIAR CONTA
+  window.criarConta = async () => {
+    const nome  = document.getElementById('cadNome').value.trim();
+    const email = document.getElementById('cadEmail').value.trim();
+    const senha = document.getElementById('cadSenha').value;
+    const msg   = document.getElementById('cadMsg');
+    const btn   = document.getElementById('btnCadastrar');
+    if(!nome||!email||!senha) { msg.textContent='Preencha todos os campos'; msg.className='login-msg error'; return; }
+    if(senha.length<6) { msg.textContent='Senha mínimo 6 caracteres'; msg.className='login-msg error'; return; }
+    btn.textContent='Criando...'; btn.disabled=true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, senha);
+      await updateProfile(cred.user, { displayName: nome });
+    } catch(e) {
+      const erros = { 'auth/email-already-in-use':'E-mail já cadastrado', 'auth/invalid-email':'E-mail inválido', 'auth/weak-password':'Senha muito fraca' };
+      msg.textContent = erros[e.code]||'Erro ao criar conta.';
+      msg.className='login-msg error';
+      btn.textContent='CRIAR CONTA'; btn.disabled=false;
+    }
+  };
+
+  // ── LOGOUT
+  window.fazerLogout = async () => {
+    await signOut(auth);
+    closeOv('ovUser');
+  };
+
+  // ── RECUPERAR SENHA
+  window.recuperarSenha = async () => {
+    const email = document.getElementById('loginEmail').value.trim();
+    const msg = document.getElementById('loginMsg');
+    if(!email) { msg.textContent='Digite seu e-mail acima primeiro'; msg.className='login-msg error'; return; }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      msg.textContent='✅ E-mail de recuperação enviado!';
+      msg.className='login-msg success';
+    } catch(e) {
+      msg.textContent='Erro ao enviar e-mail';
+      msg.className='login-msg error';
+    }
+  };
+
+  // ── CARREGAR CLIENTES
+  window.carregarClientes = async () => {
+    if(!currentUser) return;
+    try {
+      const q = query(collection(db,'clientes'), where('uid','==',currentUser.uid), orderBy('criadoEm','desc'));
+      onSnapshot(q, snap => {
+        todosClientes = snap.docs.map(d=>({id:d.id,...d.data()}));
+        renderClientes(todosClientes);
+        atualizarStats();
+      });
+    } catch(e) {
+      console.error(e);
+      showToast('Erro ao carregar clientes');
+    }
+  };
+
+  function renderClientes(lista) {
+    const html = lista.length===0
+      ? `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">SEM CLIENTES</div><div class="empty-sub">Cadastre seu primeiro cliente<br>na aba Cadastrar</div></div>`
+      : lista.map(c => `
+        <div class="ccard ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}" onclick="abrirCliente('${c.id}')">
+          <div class="ccard-emoji">${catEmojis[c.categoria]||'🏪'}</div>
+          <div class="ccard-info">
+            <div class="ccard-name">${c.nome}</div>
+            <div class="ccard-addr">${c.logradouro?c.logradouro+', '+c.numero+' — '+c.bairro:c.cidade||''}</div>
+            <div class="ccard-meta">
+              <span class="tag ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}">${c.prioridade||'—'}</span>
+              ${c.cidade?`<span class="tag dist">📍 ${c.cidade}</span>`:''}
+            </div>
+          </div>
+          <button class="nav-mini" onclick="event.stopPropagation();clienteSelecionado=todosClientes.find(x=>x.id==='${c.id}');openGps()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="white"/></svg>
+          </button>
+        </div>`).join('');
+    document.getElementById('listaClientes').innerHTML = html;
+    document.getElementById('listaInicio').innerHTML = lista.slice(0,3).length===0
+      ? `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">SEM CLIENTES</div><div class="empty-sub">Cadastre seu primeiro cliente!</div><button class="empty-btn" onclick="setAppTab('cadastro')">+ CADASTRAR</button></div>`
+      : lista.slice(0,3).map(c=>`
+        <div class="ccard ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}" onclick="abrirCliente('${c.id}')">
+          <div class="ccard-emoji">${catEmojis[c.categoria]||'🏪'}</div>
+          <div class="ccard-info">
+            <div class="ccard-name">${c.nome}</div>
+            <div class="ccard-addr">${c.logradouro?c.logradouro+', '+c.numero:c.cidade||''}</div>
+            <div class="ccard-meta"><span class="tag ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}">${c.prioridade||'—'}</span></div>
+          </div>
+          <button class="nav-mini" onclick="event.stopPropagation();clienteSelecionado=todosClientes.find(x=>x.id==='${c.id}');openGps()">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="white"/></svg>
+          </button>
+        </div>`).join('');
+  }
+
+  function atualizarStats() {
+    document.getElementById('statTotal').textContent = todosClientes.length;
+    document.getElementById('statHoje').textContent  = todosClientes.length;
+    document.getElementById('statPrio').textContent  = todosClientes.filter(c=>c.prioridade==='Alta').length;
+  }
+
+  // ── ABRIR CLIENTE
+  window.abrirCliente = (id) => {
+    const c = todosClientes.find(x=>x.id===id);
+    if(!c) return;
+    clienteSelecionado = c;
+    document.getElementById('mEmoji').textContent = catEmojis[c.categoria]||'🏪';
+    document.getElementById('mNome').textContent  = c.nome;
+    document.getElementById('mAddr').textContent  = c.logradouro?(c.logradouro+', '+c.numero+' — '+c.bairro):c.cidade||'—';
+    document.getElementById('mTel').textContent   = c.telefone||'—';
+    document.getElementById('mCat').textContent   = c.categoria||'—';
+    document.getElementById('mPrio').textContent  = c.prioridade||'—';
+    document.getElementById('mData').textContent  = c.criadoEm?.toDate?.()?.toLocaleDateString('pt-BR')||'—';
+    document.getElementById('ovCliente').classList.add('open');
+  };
+
+  // ── SALVAR CLIENTE
+  window.salvarCliente = async () => {
+    const nome = document.getElementById('cNome').value.trim();
+    const tel  = document.getElementById('cTel').value.trim();
+    if(!nome) { showToast('⚠️ Nome obrigatório'); return; }
+    if(!tel)  { showToast('⚠️ Telefone obrigatório'); return; }
+    const btn = document.getElementById('btnSalvar');
+    btn.disabled=true; btn.innerHTML='<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff"></div> Salvando...';
+    try {
+      await addDoc(collection(db,'clientes'),{
+        uid:       currentUser.uid,
+        nome,
+        responsavel: document.getElementById('cResp').value.trim(),
+        telefone:  tel,
+        whatsapp:  document.getElementById('cWpp').value.trim(),
+        categoria: window._cat||'salao',
+        prioridade:window._prio||'Alta',
+        cep:       document.getElementById('cCep').value.trim(),
+        logradouro:document.getElementById('cLog').value.trim(),
+        numero:    document.getElementById('cNum').value.trim(),
+        bairro:    document.getElementById('cBairro').value.trim(),
+        cidade:    document.getElementById('cCidade').value.trim(),
+        uf:        document.getElementById('cUF').value.trim(),
+        obs:       document.getElementById('cObs').value.trim(),
+        criadoEm:  serverTimestamp()
+      });
+      showToast('✅ Cliente salvo com sucesso!');
+      limparFormCadastro();
+      setAppTab('clientes');
+    } catch(e) {
+      showToast('❌ Erro ao salvar. Tente novamente.');
+      console.error(e);
+    }
+    btn.disabled=false;
+    btn.innerHTML='<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg> SALVAR CLIENTE';
+  };
+
+  // ── DELETAR CLIENTE
+  window.deletarCliente = async () => {
+    if(!clienteSelecionado) return;
+    if(!confirm(`Excluir "${clienteSelecionado.nome}"?`)) return;
+    await deleteDoc(doc(db,'clientes',clienteSelecionado.id));
+    closeOv('ovCliente');
+    showToast('🗑️ Cliente excluído');
+  };
+
+  // ── FILTRAR
+  window.filtrarClientes = () => {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    const filtrados = q ? todosClientes.filter(c=>c.nome?.toLowerCase().includes(q)||c.bairro?.toLowerCase().includes(q)||c.cidade?.toLowerCase().includes(q)) : todosClientes;
+    renderClientes(filtrados);
+  };
+
+  // ── GPS
+  window.obterLocalizacao = () => {
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos=>{
+      document.getElementById('gpsLocation').textContent=`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+    }, ()=>{
+      document.getElementById('gpsLocation').textContent='Localização não disponível';
+    });
+  };
+
+  window.openGps = () => { document.getElementById('ovGps').classList.add('open'); };
+  window.addRoteiro = () => { closeOv('ovCliente'); showToast('📋 Adicionado ao roteiro!'); };
+
+  window.abrirGoogleMaps = () => {
+    if(clienteSelecionado?.logradouro) {
+      const addr = encodeURIComponent(`${clienteSelecionado.logradouro} ${clienteSelecionado.numero}, ${clienteSelecionado.cidade}`);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`,'_blank');
+    }
+    closeOv('ovGps');
+  };
+
+  window.abrirWaze = () => {
+    if(clienteSelecionado?.logradouro) {
+      const addr = encodeURIComponent(`${clienteSelecionado.logradouro} ${clienteSelecionado.numero}, ${clienteSelecionado.cidade}`);
+      window.open(`https://waze.com/ul?q=${addr}`,'_blank');
+    }
+    closeOv('ovGps');
+  };
+
+  // ── CEP
+  window.buscarCep = async () => {
+    const raw = document.getElementById('cCep').value.replace(/\D/g,'');
+    const msg = document.getElementById('cepMsg');
+    if(raw.length!==8) { msg.textContent='⚠️ CEP inválido'; msg.style.color='var(--red)'; return; }
+    msg.textContent='🔍 Buscando...'; msg.style.color='var(--gray)';
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${raw}/json/`);
+      const d = await r.json();
+      if(d.erro) { msg.textContent='❌ CEP não encontrado'; msg.style.color='var(--red)'; return; }
+      document.getElementById('cLog').value    = d.logradouro||'';
+      document.getElementById('cBairro').value = d.bairro||'';
+      document.getElementById('cCidade').value = d.localidade||'';
+      document.getElementById('cUF').value     = d.uf||'';
+      document.getElementById('cNum').focus();
+      msg.textContent='✅ Endereço preenchido!'; msg.style.color='var(--green)';
+    } catch(e) { msg.textContent='❌ Erro na busca'; msg.style.color='var(--red)'; }
+  };
+
+  // ── HELPERS
+  window._cat  = 'salao';
+  window._prio = 'Alta';
+
+  window.selCat = (el, cat) => {
+    document.querySelectorAll('.cat-item').forEach(c=>c.classList.remove('sel'));
+    el.classList.add('sel'); window._cat=cat;
+  };
+
+  window.selPill = (el) => {
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('sel'));
+    el.classList.add('sel');
+    window._prio = el.textContent.includes('Alta')?'Alta':el.textContent.includes('Média')?'Média':'Baixa';
+  };
+
+  window.maskPhone = (el) => {
+    let v=el.value.replace(/\D/g,'');
+    if(v.length>11) v=v.slice(0,11);
+    if(v.length>6) v=v.replace(/^(\d{2})(\d{5})(\d{0,4})/,'($1) $2-$3');
+    else if(v.length>2) v=v.replace(/^(\d{2})(\d*)/,'($1) $2');
+    el.value=v;
+  };
+
+  window.maskCep = (el) => {
+    let v=el.value.replace(/\D/g,'');
+    if(v.length>8) v=v.slice(0,8);
+    if(v.length>5) v=v.replace(/^(\d{5})(\d*)/,'$1-$2');
+    el.value=v;
+    if(v.replace(/\D/g,'').length===8) buscarCep();
+  };
+
+  function limparFormCadastro() {
+    ['cNome','cResp','cTel','cWpp','cCep','cLog','cNum','cBairro','cCidade','cUF','cObs'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    document.getElementById('cepMsg').textContent='';
+  }
+
+  window.showToast = (msg, dur=2800) => {
+    const t=document.getElementById('toast');
+    t.textContent=msg; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), dur);
+  };
+
+  window.closeOv = (id,e) => {
+    if(!e||e.target===document.getElementById(id)) document.getElementById(id).classList.remove('open');
+  };
+
+  window.openUserMenu = () => document.getElementById('ovUser').classList.add('open');
+
+  window.setLoginTab = (tab, el) => {
+    document.querySelectorAll('.ltab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('formEntrar').style.display    = tab==='entrar'?'block':'none';
+    document.getElementById('formCadastrar').style.display = tab==='cadastrar'?'block':'none';
+  };
+
+  window.setAppTab = (tab, el, navEl) => {
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.app-tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.nitem').forEach(n=>n.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(el) el.classList.add('active');
+    if(navEl) navEl.classList.add('active');
+    const navMap = {inicio:'nav-inicio',clientes:'nav-clientes',roteiro:'nav-roteiro'};
+    if(navMap[tab]) document.getElementById(navMap[tab])?.classList.add('active');
+  };
+</script>
+</body>
+</html>
