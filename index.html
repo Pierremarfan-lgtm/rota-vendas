@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -722,11 +722,15 @@
   window.carregarClientes = async () => {
     if(!currentUser) return;
     try {
-      const q = query(collection(db,'clientes'), where('uid','==',currentUser.uid), orderBy('criadoEm','desc'));
+      const q = query(collection(db,'clientes'), where('uid','==',currentUser.uid));
       onSnapshot(q, snap => {
         todosClientes = snap.docs.map(d=>({id:d.id,...d.data()}));
         renderClientes(todosClientes);
         atualizarStats();
+      }, err => {
+        console.error(err);
+        document.getElementById('listaInicio').innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">SEM CLIENTES</div><div class="empty-sub">Cadastre seu primeiro cliente!</div><button class="empty-btn" onclick="setAppTab('cadastro')">+ CADASTRAR</button></div>`;
+        document.getElementById('listaClientes').innerHTML = `<div class="empty"><div class="empty-icon">👥</div><div class="empty-title">SEM CLIENTES</div><div class="empty-sub">Cadastre seu primeiro cliente<br>na aba Cadastrar</div></div>`;
       });
     } catch(e) {
       console.error(e);
