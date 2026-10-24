@@ -1830,7 +1830,7 @@
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 20000);
       try {
-        const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+        const r = await fetch(`https://api.foursquare.com/v3/places/nearby?${params}`, {
           headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
           signal: ctrl.signal
         });
@@ -1857,7 +1857,7 @@
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 15000);
       try {
-        const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+        const r = await fetch(`https://api.foursquare.com/v3/places/nearby?${params}`, {
           headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
           signal: ctrl.signal
         });
