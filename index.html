@@ -1723,14 +1723,14 @@
   let prospSelecionado = null;
   let catsSelecionadas = new Set(['salao','barbearia','esmalteria','terapia','estetica']);
 
-  // Termos de busca Nominatim por categoria
-  const nominatimTermos = {
-    salao:     ['salão de beleza','salon de beleza','cabeleireiro','hairdresser'],
-    barbearia: ['barbearia','barber'],
-    esmalteria:['esmalteria','nail salon','manicure'],
-    terapia:   ['terapia capilar','tratamento capilar'],
-    estetica:  ['estética','estetica','beauty salon','spa'],
-    spa:       ['spa','centro de estética']
+  // Tags OSM por categoria
+  const osmShopTags = {
+    salao:     'hairdresser',
+    barbearia: 'barber',
+    esmalteria:'nail_salon',
+    terapia:   'hairdresser',
+    estetica:  'beauty',
+    spa:       'spa'
   };
 
   const catNomes = {
@@ -1791,19 +1791,37 @@
     }
   };
 
-  // Busca via Nominatim (funciona no iOS/Safari sem CORS)
-  async function buscarNominatim(lat, lng, raioM, termoBusca) {
-    const raioGrau = raioM / 111000;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termoBusca)}&limit=50&countrycodes=br&bounded=1&viewbox=${lng-raioGrau},${lat+raioGrau},${lng+raioGrau},${lat-raioGrau}&accept-language=pt-BR`;
-    try {
-      const r = await fetch(url, { headers: {'Accept-Language':'pt-BR','User-Agent':'RotaVendas/1.0'} });
-      if(!r.ok) return [];
-      const d = await r.json();
-      return d.filter(item => {
-        const ilat = parseFloat(item.lat), ilng = parseFloat(item.lon);
-        return calcDistancia(lat, lng, ilat, ilng) <= raioM/1000;
-      });
-    } catch(e) { return []; }
+  // Busca via Overpass API (dados completos do OSM)
+  async function buscarOverpass(lat, lng, raioM, shopVals) {
+    const tags = shopVals.map(v =>
+      v === 'spa'
+        ? `node["leisure"="spa"](around:${raioM},${lat},${lng});node["amenity"="spa"](around:${raioM},${lat},${lng});`
+        : `node["shop"="${v}"](around:${raioM},${lat},${lng});way["shop"="${v}"](around:${raioM},${lat},${lng});`
+    ).join('');
+    const query = `[out:json][timeout:25];(${tags});out center;`;
+    // Lista de mirrors Overpass que aceitam CORS
+    const endpoints = [
+      'https://overpass.kumi.systems/api/interpreter',
+      'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+      'https://overpass-api.de/api/interpreter'
+    ];
+    for(const ep of endpoints) {
+      try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 20000);
+        const r = await fetch(ep, {
+          method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:'data='+encodeURIComponent(query),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if(!r.ok) continue;
+        const d = await r.json();
+        return d.elements || [];
+      } catch(e) { continue; }
+    }
+    return [];
   }
 
   // Detecta categoria do resultado OSM
@@ -1855,37 +1873,33 @@
     mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
 
     try {
-      // Coleta termos de todas as categorias selecionadas
-      const termos = [];
-      for(const cat of catsSelecionadas) {
-        const t = nominatimTermos[cat] || [];
-        termos.push(...t);
-      }
+      // Monta lista de shop values para as categorias selecionadas
+      const shopVals = [...new Set([...catsSelecionadas].map(c => osmShopTags[c]).filter(Boolean))];
+      status.textContent = `Buscando ${shopVals.length} tipo(s) em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'}...`;
 
-      // Busca cada termo com delay de 1.1s (Nominatim rate limit)
+      const elementos = await buscarOverpass(minhaLat, minhaLng, raioProspM, shopVals);
+
       const vistos = new Set();
       const prospects = [];
-      for(let i = 0; i < termos.length; i++) {
-        if(i > 0) await new Promise(r => setTimeout(r, 1100));
-        status.textContent = `Buscando ${i+1}/${termos.length}: ${termos[i]}...`;
-        const resultados = await buscarNominatim(minhaLat, minhaLng, raioProspM, termos[i]);
-        for(const item of resultados) {
-          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
-          const nome = item.display_name.split(',')[0].trim();
-          const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
-          if(vistos.has(chave)) continue;
-          vistos.add(chave);
-          // Detecta categoria pelo termo usado
-          let cat = 'estetica';
-          if(termos[i].includes('barbearia')||termos[i].includes('barber')) cat = 'barbearia';
-          else if(termos[i].includes('esmalter')||termos[i].includes('nail')||termos[i].includes('manicure')) cat = 'esmalteria';
-          else if(termos[i].includes('salão')||termos[i].includes('cabelei')||termos[i].includes('hairdress')) cat = 'salao';
-          else if(termos[i].includes('terapia')||termos[i].includes('capilar')) cat = 'terapia';
-          else if(termos[i].includes('spa')) cat = 'spa';
-          const naBase = jaEstaNaBase(nome, lat, lng);
-          const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
-          prospects.push({ lat, lng, nome, cat, naBase, dist, tags:{}, osmId: item.osm_id||chave, nominatimData: item });
-        }
+      for(const el of elementos) {
+        const lat = el.lat ?? el.center?.lat;
+        const lng = el.lon ?? el.center?.lon;
+        if(!lat || !lng) continue;
+        const nome = el.tags?.name || el.tags?.['name:pt'] || 'Sem nome';
+        const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
+        if(vistos.has(chave)) continue;
+        vistos.add(chave);
+        // Detecta categoria pelo shop tag
+        let cat = 'estetica';
+        const shop = el.tags?.shop||'';
+        if(shop==='hairdresser') cat = catsSelecionadas.has('terapia') && !catsSelecionadas.has('salao') ? 'terapia' : 'salao';
+        else if(shop==='barber') cat = 'barbearia';
+        else if(shop==='nail_salon') cat = 'esmalteria';
+        else if(shop==='beauty') cat = 'estetica';
+        else if(shop==='spa'||el.tags?.leisure==='spa') cat = 'spa';
+        const naBase = jaEstaNaBase(nome, lat, lng);
+        const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
+        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: el.tags||{}, osmId: el.id||chave });
       }
 
       prospects.sort((a,b) => a.dist - b.dist);
