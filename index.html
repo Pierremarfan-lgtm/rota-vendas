@@ -1723,13 +1723,14 @@
   let prospSelecionado = null;
   let catsSelecionadas = new Set(['salao','barbearia','esmalteria','terapia','estetica']);
 
-  // Tags OSM para cada categoria (enxuto — só as mais comuns no Brasil)
-  const osmTags = {
-    salao:      [['shop','hairdresser']],
-    barbearia:  [['shop','barber']],
-    esmalteria: [['shop','nail_salon']],
-    terapia:    [['shop','hairdresser']],
-    estetica:   [['shop','beauty']]
+  // Termos de busca Nominatim por categoria
+  const nominatimTermos = {
+    salao:     ['salão de beleza','salon de beleza','cabeleireiro','hairdresser'],
+    barbearia: ['barbearia','barber'],
+    esmalteria:['esmalteria','nail salon','manicure'],
+    terapia:   ['terapia capilar','tratamento capilar'],
+    estetica:  ['estética','estetica','beauty salon','spa'],
+    spa:       ['spa','centro de estética']
   };
 
   const catNomes = {
@@ -1790,25 +1791,19 @@
     }
   };
 
-  // Monta query Overpass — só nodes, timeout curto
-  function montarQueryOverpass(lat, lng, raio) {
-    const vals = new Set();
-    for(const cat of catsSelecionadas) {
-      const osm = osmTags[cat] || [];
-      for(const [,v] of osm) vals.add(v);
-    }
-    if(catsSelecionadas.has('spa')) vals.add('spa');
-    if(vals.size === 0) return null;
-    const filtro = [...vals].map(v => `["shop"~"${v}"]`).join('|');
-    // Query compacta: um único bloco shop com regex
-    const shopVals = [...vals].join('|');
-    const tags = [
-      `node["shop"~"^(${shopVals})$"](around:${raio},${lat},${lng});`
-    ];
-    if(catsSelecionadas.has('spa')) {
-      tags.push(`node["leisure"="spa"](around:${raio},${lat},${lng});`);
-    }
-    return `[out:json][timeout:15];(${tags.join('')});out;`;
+  // Busca via Nominatim (funciona no iOS/Safari sem CORS)
+  async function buscarNominatim(lat, lng, raioM, termoBusca) {
+    const raioGrau = raioM / 111000;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(termoBusca)}&limit=50&countrycodes=br&bounded=1&viewbox=${lng-raioGrau},${lat+raioGrau},${lng+raioGrau},${lat-raioGrau}&accept-language=pt-BR`;
+    try {
+      const r = await fetch(url, { headers: {'Accept-Language':'pt-BR','User-Agent':'RotaVendas/1.0'} });
+      if(!r.ok) return [];
+      const d = await r.json();
+      return d.filter(item => {
+        const ilat = parseFloat(item.lat), ilng = parseFloat(item.lon);
+        return calcDistancia(lat, lng, ilat, ilng) <= raioM/1000;
+      });
+    } catch(e) { return []; }
   }
 
   // Detecta categoria do resultado OSM
@@ -1845,99 +1840,85 @@
     const btn = document.getElementById('btnBuscarProsp');
     const status = document.getElementById('prospStatus');
     btn.disabled = true;
-    btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px"></div> Buscando...';
+    btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px;display:inline-block;border-radius:50%;border-width:2px;border-style:solid;animation:spin .7s linear infinite"></div> Buscando...';
     status.textContent = 'Consultando OpenStreetMap...';
 
-    // Inicializa mapa prospects
     inicializarMapaProsp();
-
-    // Limpa marcadores anteriores
     marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
     marcadoresProsp = [];
     if(circuloProsp) mapaProsp.removeLayer(circuloProsp);
 
-    // Desenha círculo da área
     circuloProsp = L.circle([minhaLat, minhaLng], {
-      radius: raioProspM,
-      color: '#111', weight: 2,
-      fillColor: '#111', fillOpacity: 0.04,
-      dashArray: '6,6'
+      radius: raioProspM, color:'#111', weight:2,
+      fillColor:'#111', fillOpacity:0.04, dashArray:'6,6'
     }).addTo(mapaProsp);
     mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
 
-    const query = montarQueryOverpass(minhaLat, minhaLng, raioProspM);
-    if(!query) { status.textContent = 'Selecione ao menos uma categoria'; btn.disabled=false; btn.innerHTML='<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg> BUSCAR AGORA'; return; }
-
     try {
-      // Tenta servidores Overpass com timeout de 15s cada
-      const endpoints = [
-        'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass-api.de/api/interpreter'
-      ];
-      let resp = null;
-      for(const ep of endpoints) {
-        try {
-          const controller = new AbortController();
-          const tid = setTimeout(() => controller.abort(), 15000);
-          resp = await fetch(ep + '?data=' + encodeURIComponent(query), { signal: controller.signal });
-          clearTimeout(tid);
-          if(resp.ok) break;
-        } catch(e) { resp = null; }
+      // Coleta termos de todas as categorias selecionadas
+      const termos = [];
+      for(const cat of catsSelecionadas) {
+        const t = nominatimTermos[cat] || [];
+        termos.push(...t);
       }
-      if(!resp || !resp.ok) throw new Error('Servidor indisponível');
-      const data = await resp.json();
-      const elementos = data.elements || [];
 
-      // Deduplica por nome+coords
+      // Busca cada termo com delay de 1.1s (Nominatim rate limit)
       const vistos = new Set();
       const prospects = [];
-      for(const el of elementos) {
-        const lat = el.lat || el.center?.lat;
-        const lng = el.lon || el.center?.lon;
-        if(!lat || !lng) continue;
-        const nome = el.tags?.name || el.tags?.['name:pt'] || '';
-        const chave = `${nome}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
-        if(vistos.has(chave)) continue;
-        vistos.add(chave);
-        const cat = detectarCategoria(el.tags);
-        const naBase = jaEstaNaBase(nome, lat, lng);
-        const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
-        prospects.push({ lat, lng, nome: nome||'Sem nome', cat, naBase, dist, tags: el.tags||{}, osmId: el.id });
+      for(let i = 0; i < termos.length; i++) {
+        if(i > 0) await new Promise(r => setTimeout(r, 1100));
+        status.textContent = `Buscando ${i+1}/${termos.length}: ${termos[i]}...`;
+        const resultados = await buscarNominatim(minhaLat, minhaLng, raioProspM, termos[i]);
+        for(const item of resultados) {
+          const lat = parseFloat(item.lat), lng = parseFloat(item.lon);
+          const nome = item.display_name.split(',')[0].trim();
+          const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
+          if(vistos.has(chave)) continue;
+          vistos.add(chave);
+          // Detecta categoria pelo termo usado
+          let cat = 'estetica';
+          if(termos[i].includes('barbearia')||termos[i].includes('barber')) cat = 'barbearia';
+          else if(termos[i].includes('esmalter')||termos[i].includes('nail')||termos[i].includes('manicure')) cat = 'esmalteria';
+          else if(termos[i].includes('salão')||termos[i].includes('cabelei')||termos[i].includes('hairdress')) cat = 'salao';
+          else if(termos[i].includes('terapia')||termos[i].includes('capilar')) cat = 'terapia';
+          else if(termos[i].includes('spa')) cat = 'spa';
+          const naBase = jaEstaNaBase(nome, lat, lng);
+          const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
+          prospects.push({ lat, lng, nome, cat, naBase, dist, tags:{}, osmId: item.osm_id||chave, nominatimData: item });
+        }
       }
 
-      // Ordena por distância
       prospects.sort((a,b) => a.dist - b.dist);
 
-      // Coloca pins no mapa
       for(const p of prospects) {
         const cor = p.naBase ? '#1A7A40' : '#1565C0';
         const icone = L.divIcon({
           className:'',
-          html:`<div style="width:26px;height:32px;position:relative;">
+          html:`<div style="width:26px;height:32px;">
             <div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
               background:${cor};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
           </div>`,
           iconSize:[26,32], iconAnchor:[13,32], popupAnchor:[0,-34]
         });
-        const m = L.marker([p.lat, p.lng], { icon: icone })
+        const m = L.marker([p.lat, p.lng], { icon:icone })
           .addTo(mapaProsp)
           .bindPopup(`<b>${catEmojisProsp[p.cat]||'🏪'} ${p.nome}</b>${p.naBase?'<br><span style="color:green;font-size:11px">✅ Na sua base</span>':''}`);
         m.on('click', () => abrirProspect(p));
         marcadoresProsp.push(m);
       }
 
-      // Marcador "você" no mapa prospects
       if(minhaLat) {
-        const eu = L.marker([minhaLat, minhaLng], { icon: criarIconeEu(), zIndexOffset:1000 })
+        const eu = L.marker([minhaLat,minhaLng],{icon:criarIconeEu(),zIndexOffset:1000})
           .addTo(mapaProsp).bindPopup('<b>📍 Você</b>');
         marcadoresProsp.push(eu);
       }
 
-      // Renderiza lista
       renderProspects(prospects);
       const novos = prospects.filter(p=>!p.naBase).length;
       const naBase = prospects.filter(p=>p.naBase).length;
-      status.textContent = `${prospects.length} encontrado(s) • ${novos} novo(s) • ${naBase} já na base`;
+      status.textContent = prospects.length > 0
+        ? `${prospects.length} encontrado(s) • ${novos} novo(s) • ${naBase} já na base`
+        : '🔍 Nenhum resultado. Tente aumentar o raio ou outra categoria.';
       document.getElementById('prospTitulo').textContent = `${prospects.length} ESTABELECIMENTOS`;
 
     } catch(e) {
