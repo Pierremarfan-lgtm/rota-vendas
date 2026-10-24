@@ -229,6 +229,21 @@
 
   /* ── CLIENTES TAB ── */
   .search-wrap { display:flex; align-items:center; gap:10px; background:var(--white); border-radius:13px; padding:10px 14px; box-shadow:var(--shadow); margin:12px 16px 0; }
+  .raio-btn { flex:1; padding:7px 4px; border-radius:9px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:10px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .raio-btn.active { background:var(--black); color:#fff; border-color:var(--black); }
+  .raio-prosp { padding:8px 10px; border-radius:10px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .raio-prosp.active { background:var(--black); color:#fff; border-color:var(--black); }
+  .cat-check { display:flex; align-items:center; gap:8px; background:var(--bg); border:2px solid var(--xlight); border-radius:12px; padding:10px 12px; cursor:pointer; transition:all .18s; }
+  .cat-check.sel { background:var(--black); border-color:var(--black); }
+  .cat-check.sel .cc-lbl { color:#fff; }
+  .cc-icon { font-size:18px; flex-shrink:0; }
+  .cc-lbl { font-size:11px; font-weight:800; color:var(--gray); }
+  .prosp-card { display:flex; align-items:flex-start; gap:10px; background:var(--white); border-radius:14px; padding:12px; box-shadow:var(--shadow); border-left:4px solid #1565C0; cursor:pointer; transition:all .2s; }
+  .prosp-card:active { transform:scale(.98); }
+  .prosp-card.na-base { border-left-color:var(--green); }
+  .prosp-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; }
+  .prosp-badge.novo { background:#E3F0FF; color:#1565C0; }
+  .prosp-badge.base { background:#E0F2E9; color:var(--green); }
   .search-wrap input { flex:1; border:none; outline:none; background:none; font-family:'Nunito',sans-serif; font-size:14px; font-weight:600; color:var(--dark); }
   .search-wrap input::placeholder { color:var(--lgray); }
   .search-icon { width:34px; height:34px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
@@ -495,6 +510,7 @@
   <div class="app-tabs">
     <button class="app-tab active" onclick="setAppTab('inicio',this)">🏠 Início</button>
     <button class="app-tab" onclick="setAppTab('clientes',this)">👥 Clientes</button>
+    <button class="app-tab" onclick="setAppTab('prospectar',this)">🔍 Prospectar</button>
     <button class="app-tab" onclick="setAppTab('cadastro',this)">➕ Cadastrar</button>
     <button class="app-tab" onclick="setAppTab('roteiro',this)">🗓️ Roteiro</button>
   </div>
@@ -563,6 +579,7 @@
 
   <!-- ── TAB: CLIENTES ── -->
   <div class="tab-pane" id="tab-clientes">
+    <!-- BUSCA -->
     <div class="search-wrap">
       <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="#AAA" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="#AAA" stroke-width="2.2" stroke-linecap="round"/></svg>
       <input type="text" id="searchInput" placeholder="Buscar cliente..." oninput="filtrarClientes()">
@@ -570,9 +587,152 @@
         <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.5"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.5" stroke-linecap="round"/></svg>
       </button>
     </div>
-    <div style="padding:10px 16px 0">
+
+    <!-- FILTROS -->
+    <div style="padding:10px 16px 0; display:flex; flex-direction:column; gap:8px;">
+
+      <!-- Linha 1: Categoria + Prioridade -->
+      <div style="display:flex; gap:8px;">
+        <select id="filtroCategoria" onchange="filtrarClientes()" style="
+          flex:1; padding:9px 12px; border-radius:11px; border:2px solid var(--xlight);
+          background:var(--white); color:var(--dark); font-family:'Nunito',sans-serif;
+          font-size:12px; font-weight:800; outline:none; -webkit-appearance:none;
+        ">
+          <option value="">🏪 Todas Categorias</option>
+          <option value="salao">💇‍♀️ Salão</option>
+          <option value="barbearia">💈 Barbearia</option>
+          <option value="estetica">💅 Estética</option>
+          <option value="clinica">🏥 Clínica</option>
+          <option value="spa">🧘 Spa</option>
+          <option value="outro">🏪 Outro</option>
+        </select>
+        <select id="filtroPrioridade" onchange="filtrarClientes()" style="
+          flex:1; padding:9px 12px; border-radius:11px; border:2px solid var(--xlight);
+          background:var(--white); color:var(--dark); font-family:'Nunito',sans-serif;
+          font-size:12px; font-weight:800; outline:none; -webkit-appearance:none;
+        ">
+          <option value="">⭐ Todas Prioridades</option>
+          <option value="Alta">🔴 Alta</option>
+          <option value="Média">🟡 Média</option>
+          <option value="Baixa">⚪ Baixa</option>
+        </select>
+      </div>
+
+      <!-- Linha 2: Raio de distância -->
+      <div style="display:flex; gap:6px; align-items:center;">
+        <span style="font-size:11px; font-weight:800; color:var(--gray); white-space:nowrap;">📍 Raio:</span>
+        <div style="display:flex; gap:6px; flex:1;">
+          <button class="raio-btn active" onclick="setRaio(0,this)">Todos</button>
+          <button class="raio-btn" onclick="setRaio(1,this)">1 km</button>
+          <button class="raio-btn" onclick="setRaio(3,this)">3 km</button>
+          <button class="raio-btn" onclick="setRaio(5,this)">5 km</button>
+          <button class="raio-btn" onclick="setRaio(10,this)">10 km</button>
+        </div>
+        <button onclick="limparFiltros()" style="
+          padding:7px 10px; border-radius:9px; border:none;
+          background:var(--xlight); color:var(--gray);
+          font-family:'Nunito',sans-serif; font-size:10px; font-weight:800;
+          cursor:pointer; white-space:nowrap;
+        ">✕ Limpar</button>
+      </div>
+
+      <!-- Contador de resultados -->
+      <div id="filtroResultado" style="font-size:11px; font-weight:800; color:var(--gray); padding:2px 0;"></div>
+    </div>
+
+    <div style="padding:8px 16px 0">
       <div class="clist" id="listaClientes">
         <div class="loading"><div class="spin"></div>Carregando...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TAB: PROSPECTAR ── -->
+  <div class="tab-pane" id="tab-prospectar">
+
+    <!-- PAINEL DE BUSCA -->
+    <div style="margin:12px 16px 0; background:var(--white); border-radius:16px; padding:16px; box-shadow:var(--shadow);">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1.5px; color:var(--black); margin-bottom:12px;">🔍 BUSCAR PROSPECTS</div>
+
+      <!-- Raio personalizado -->
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px;">📍 Raio de Busca</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
+          <button class="raio-prosp active" onclick="setRaioProsp(500,this)">500m</button>
+          <button class="raio-prosp" onclick="setRaioProsp(1000,this)">1 km</button>
+          <button class="raio-prosp" onclick="setRaioProsp(2000,this)">2 km</button>
+          <button class="raio-prosp" onclick="setRaioProsp(5000,this)">5 km</button>
+          <button class="raio-prosp" onclick="setRaioProsp(10000,this)">10 km</button>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="number" id="raioCustom" placeholder="Raio personalizado (metros)" min="100" max="50000"
+            style="flex:1; padding:10px 12px; border:2px solid var(--xlight); border-radius:11px; background:var(--bg); font-family:'Nunito',sans-serif; font-size:13px; font-weight:700; outline:none; color:var(--dark);"
+            oninput="setRaioCustom(this.value)">
+          <span style="font-size:12px; font-weight:800; color:var(--gray);">m</span>
+        </div>
+        <div id="raioDisplay" style="font-size:12px; font-weight:800; color:var(--green); margin-top:6px;">📏 Raio: 500 metros</div>
+      </div>
+
+      <!-- Categorias para busca -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; margin-bottom:8px;">🏪 Categorias (pode selecionar várias)</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:7px;">
+          <label class="cat-check sel" id="chk-salao">
+            <input type="checkbox" value="salao" checked onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">💇‍♀️</span><span class="cc-lbl">Salão de Beleza</span>
+          </label>
+          <label class="cat-check sel" id="chk-barbearia">
+            <input type="checkbox" value="barbearia" checked onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">💈</span><span class="cc-lbl">Barbearia</span>
+          </label>
+          <label class="cat-check sel" id="chk-esmalteria">
+            <input type="checkbox" value="esmalteria" checked onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">💅</span><span class="cc-lbl">Esmalteria</span>
+          </label>
+          <label class="cat-check sel" id="chk-terapia">
+            <input type="checkbox" value="terapia" checked onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">🌿</span><span class="cc-lbl">Terapia Capilar</span>
+          </label>
+          <label class="cat-check sel" id="chk-estetica">
+            <input type="checkbox" value="estetica" checked onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">✨</span><span class="cc-lbl">Estética</span>
+          </label>
+          <label class="cat-check" id="chk-spa">
+            <input type="checkbox" value="spa" onchange="toggleCatProsp(this)" style="display:none">
+            <span class="cc-icon">🧘</span><span class="cc-lbl">Spa</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Botão buscar -->
+      <button onclick="buscarProspects()" id="btnBuscarProsp" style="
+        width:100%; padding:14px; border-radius:13px; border:none;
+        background:var(--black); color:#fff;
+        font-family:'Nunito',sans-serif; font-size:14px; font-weight:900;
+        cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
+        box-shadow:0 4px 14px rgba(0,0,0,.22);
+      ">
+        <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>
+        BUSCAR AGORA
+      </button>
+      <div id="prospStatus" style="text-align:center; font-size:12px; font-weight:700; color:var(--gray); margin-top:8px; min-height:18px;"></div>
+    </div>
+
+    <!-- MAPA PROSPECTS -->
+    <div style="margin:10px 16px 0;">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:6px;">🗺️ MAPA DE PROSPECTS</div>
+      <div id="mapaProsp" style="width:100%; height:220px; border-radius:14px; box-shadow:var(--shadow); overflow:hidden; border:1.5px solid var(--xlight); background:#e8e8e8;"></div>
+    </div>
+
+    <!-- LISTA DE PROSPECTS -->
+    <div style="padding:10px 16px 0;">
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:6px;" id="prospTitulo">RESULTADOS</div>
+      <div id="listaProspects">
+        <div class="empty">
+          <div class="empty-icon">🔍</div>
+          <div class="empty-title">BUSCA NÃO INICIADA</div>
+          <div class="empty-sub">Configure o raio e as categorias<br>e toque em Buscar Agora</div>
+        </div>
       </div>
     </div>
   </div>
@@ -716,6 +876,39 @@
       <div class="nlbl">Perfil</div>
     </div>
   </nav>
+</div>
+
+<!-- MODAL PROSPECT -->
+<div class="overlay" id="ovProspect" onclick="closeOv('ovProspect',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mhead">
+      <div class="mavatar" id="pEmoji"></div>
+      <div>
+        <div class="mtitle" id="pNome"></div>
+        <div class="msub" id="pAddr"></div>
+      </div>
+    </div>
+    <div class="mgrid">
+      <div class="mitem"><div class="mitem-l">🏷️ Categoria</div><div class="mitem-v" id="pCat"></div></div>
+      <div class="mitem"><div class="mitem-l">📍 Distância</div><div class="mitem-v" id="pDist"></div></div>
+    </div>
+    <div id="pNaBaseAviso" style="display:none; background:#E0F2E9; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:12px; font-weight:800; color:var(--green);">
+      ✅ Este estabelecimento já está na sua base de clientes!
+    </div>
+    <div class="mactions">
+      <button class="mbtn success" onclick="addProspectRoteiro()">
+        📋 ADICIONAR AO ROTEIRO
+      </button>
+      <button class="mbtn primary" id="btnSalvarProspect" onclick="salvarProspectComoCliente()">
+        💾 SALVAR COMO CLIENTE
+      </button>
+      <button class="mbtn sec" onclick="closeOv('ovProspect');abrirProspectGps()">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="currentColor"/></svg>
+        INICIAR ROTA
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL CLIENTE -->
@@ -1332,9 +1525,67 @@
   };
 
   // ── FILTRAR
+  let filtroRaioKm = 0; // 0 = todos
+
+  window.setRaio = (km, el) => {
+    filtroRaioKm = km;
+    document.querySelectorAll('.raio-btn').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    filtrarClientes();
+  };
+
+  window.limparFiltros = () => {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filtroCategoria').value = '';
+    document.getElementById('filtroPrioridade').value = '';
+    filtroRaioKm = 0;
+    document.querySelectorAll('.raio-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+    filtrarClientes();
+  };
+
   window.filtrarClientes = () => {
-    const q = document.getElementById('searchInput').value.toLowerCase();
-    const filtrados = q ? todosClientes.filter(c=>c.nome?.toLowerCase().includes(q)||c.bairro?.toLowerCase().includes(q)||c.cidade?.toLowerCase().includes(q)) : todosClientes;
+    const q    = document.getElementById('searchInput').value.toLowerCase();
+    const cat  = document.getElementById('filtroCategoria').value;
+    const prio = document.getElementById('filtroPrioridade').value;
+
+    let filtrados = todosClientes.filter(c => {
+      // Busca por texto
+      if(q && !c.nome?.toLowerCase().includes(q) && !c.bairro?.toLowerCase().includes(q) && !c.cidade?.toLowerCase().includes(q)) return false;
+      // Filtro categoria
+      if(cat && c.categoria !== cat) return false;
+      // Filtro prioridade
+      if(prio && c.prioridade !== prio) return false;
+      // Filtro raio
+      if(filtroRaioKm > 0 && minhaLat) {
+        const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat, lng:c.lng} : null);
+        if(!coords) return false; // sem coords, exclui do filtro por raio
+        const dist = calcDistancia(minhaLat, minhaLng, coords.lat, coords.lng);
+        if(dist > filtroRaioKm) return false;
+      }
+      return true;
+    });
+
+    // Ordena por distância se GPS disponível
+    if(minhaLat) {
+      filtrados.sort((a, b) => {
+        const ca = geocodeCache[a.id] || (a.lat ? {lat:a.lat,lng:a.lng} : null);
+        const cb = geocodeCache[b.id] || (b.lat ? {lat:b.lat,lng:b.lng} : null);
+        if(!ca && !cb) return 0;
+        if(!ca) return 1;
+        if(!cb) return -1;
+        return calcDistancia(minhaLat,minhaLng,ca.lat,ca.lng) - calcDistancia(minhaLat,minhaLng,cb.lat,cb.lng);
+      });
+    }
+
+    // Contador
+    const el = document.getElementById('filtroResultado');
+    if(el) {
+      const temFiltro = q || cat || prio || filtroRaioKm > 0;
+      el.textContent = temFiltro
+        ? `${filtrados.length} de ${todosClientes.length} cliente(s) encontrado(s)`
+        : `${todosClientes.length} cliente(s) no total`;
+    }
+
     renderClientes(filtrados);
   };
 
@@ -1457,10 +1708,348 @@
     if(navEl) navEl.classList.add('active');
     const navMap = {inicio:'nav-inicio',clientes:'nav-clientes',roteiro:'nav-roteiro'};
     if(navMap[tab]) document.getElementById(navMap[tab])?.classList.add('active');
-    // Invalidate mapa size ao voltar para a aba início
-    if(tab === 'inicio' && mapa) {
-      setTimeout(() => mapa.invalidateSize(), 100);
+    if(tab === 'inicio' && mapa) setTimeout(() => mapa.invalidateSize(), 100);
+    if(tab === 'prospectar' && mapaProsp) setTimeout(() => mapaProsp.invalidateSize(), 100);
+  };
+
+  // ══════════════════════════════════════════════
+  //  ETAPA 4 — PROSPECTAR (OVERPASS API)
+  // ══════════════════════════════════════════════
+
+  let mapaProsp = null;
+  let raioProspM = 500;
+  let circuloProsp = null;
+  let marcadoresProsp = [];
+  let prospSelecionado = null;
+  let catsSelecionadas = new Set(['salao','barbearia','esmalteria','terapia','estetica']);
+
+  // Tags OSM para cada categoria
+  const osmTags = {
+    salao:      [['shop','hairdresser'],['amenity','hairdresser']],
+    barbearia:  [['shop','barber'],['amenity','barber']],
+    esmalteria: [['shop','nail_salon'],['beauty','nails']],
+    terapia:    [['shop','hairdresser'],['beauty','hair']],
+    estetica:   [['shop','beauty'],['amenity','beauty_salon'],['shop','cosmetics']]
+  };
+
+  const catNomes = {
+    salao:'Salão de Beleza', barbearia:'Barbearia',
+    esmalteria:'Esmalteria', terapia:'Terapia Capilar', estetica:'Estética', spa:'Spa'
+  };
+  const catEmojisProsp = {
+    salao:'💇‍♀️', barbearia:'💈', esmalteria:'💅',
+    terapia:'🌿', estetica:'✨', spa:'🧘'
+  };
+
+  // Inicializa mapa de prospects
+  function inicializarMapaProsp() {
+    if(mapaProsp) return;
+    mapaProsp = L.map('mapaProsp', {
+      center: [minhaLat||(-21.76), minhaLng||(-41.33)],
+      zoom: 14, zoomControl: true, attributionControl: false
+    });
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 }).addTo(mapaProsp);
+    L.control.attribution({ prefix:'© OpenStreetMap' }).addTo(mapaProsp);
+    if(minhaLat) {
+      L.marker([minhaLat, minhaLng], { icon: criarIconeEu() }).addTo(mapaProsp).bindPopup('<b>📍 Você</b>');
     }
+  }
+
+  window.setRaioProsp = (metros, el) => {
+    raioProspM = metros;
+    document.querySelectorAll('.raio-prosp').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('raioCustom').value = '';
+    atualizarDisplayRaio();
+  };
+
+  window.setRaioCustom = (val) => {
+    const v = parseInt(val);
+    if(v >= 100 && v <= 50000) {
+      raioProspM = v;
+      document.querySelectorAll('.raio-prosp').forEach(b => b.classList.remove('active'));
+      atualizarDisplayRaio();
+    }
+  };
+
+  function atualizarDisplayRaio() {
+    const txt = raioProspM >= 1000
+      ? `📏 Raio: ${(raioProspM/1000).toFixed(1)} km`
+      : `📏 Raio: ${raioProspM} metros`;
+    document.getElementById('raioDisplay').textContent = txt;
+  }
+
+  window.toggleCatProsp = (el) => {
+    const label = el.closest('label');
+    if(el.checked) {
+      catsSelecionadas.add(el.value);
+      label.classList.add('sel');
+    } else {
+      catsSelecionadas.delete(el.value);
+      label.classList.remove('sel');
+    }
+  };
+
+  // Monta query Overpass
+  function montarQueryOverpass(lat, lng, raio) {
+    const tags = [];
+    for(const cat of catsSelecionadas) {
+      const osm = osmTags[cat] || [];
+      for(const [k,v] of osm) {
+        tags.push(`node["${k}"="${v}"](around:${raio},${lat},${lng});`);
+        tags.push(`way["${k}"="${v}"](around:${raio},${lat},${lng});`);
+      }
+    }
+    // Spa separado se selecionado
+    if(catsSelecionadas.has('spa')) {
+      tags.push(`node["leisure"="spa"](around:${raio},${lat},${lng});`);
+      tags.push(`node["amenity"="spa"](around:${raio},${lat},${lng});`);
+    }
+    if(tags.length === 0) return null;
+    return `[out:json][timeout:25];(${tags.join('')});out center;`;
+  }
+
+  // Detecta categoria do resultado OSM
+  function detectarCategoria(tags) {
+    if(!tags) return 'outro';
+    const shop = tags.shop||''; const amenity = tags.amenity||''; const beauty = tags.beauty||'';
+    if(shop==='barber'||amenity==='barber') return 'barbearia';
+    if(shop==='nail_salon'||beauty==='nails') return 'esmalteria';
+    if(shop==='beauty'||amenity==='beauty_salon') return 'estetica';
+    if(shop==='hairdresser'||amenity==='hairdresser') return 'salao';
+    if(amenity==='spa'||tags.leisure==='spa') return 'spa';
+    return 'outro';
+  }
+
+  // Verifica se prospect já está na base
+  function jaEstaNaBase(nome, lat, lng) {
+    if(!nome) return null;
+    const nomeLower = nome.toLowerCase().trim();
+    return todosClientes.find(c => {
+      if(c.nome?.toLowerCase().trim() === nomeLower) return true;
+      const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
+      if(coords && lat && lng) {
+        const dist = calcDistancia(lat, lng, coords.lat, coords.lng);
+        if(dist < 0.05) return true; // menos de 50m = mesmo lugar
+      }
+      return false;
+    }) || null;
+  }
+
+  window.buscarProspects = async () => {
+    if(!minhaLat) { showToast('📍 GPS necessário. Aguarde ou recarregue.'); return; }
+    if(catsSelecionadas.size === 0) { showToast('⚠️ Selecione ao menos uma categoria'); return; }
+
+    const btn = document.getElementById('btnBuscarProsp');
+    const status = document.getElementById('prospStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px"></div> Buscando...';
+    status.textContent = 'Consultando OpenStreetMap...';
+
+    // Inicializa mapa prospects
+    inicializarMapaProsp();
+
+    // Limpa marcadores anteriores
+    marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
+    marcadoresProsp = [];
+    if(circuloProsp) mapaProsp.removeLayer(circuloProsp);
+
+    // Desenha círculo da área
+    circuloProsp = L.circle([minhaLat, minhaLng], {
+      radius: raioProspM,
+      color: '#111', weight: 2,
+      fillColor: '#111', fillOpacity: 0.04,
+      dashArray: '6,6'
+    }).addTo(mapaProsp);
+    mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
+
+    const query = montarQueryOverpass(minhaLat, minhaLng, raioProspM);
+    if(!query) { status.textContent = 'Selecione ao menos uma categoria'; btn.disabled=false; btn.innerHTML='<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg> BUSCAR AGORA'; return; }
+
+    try {
+      const resp = await fetch('https://overpass-api.de/api/interpreter', {
+        method: 'POST',
+        body: 'data=' + encodeURIComponent(query)
+      });
+      const data = await resp.json();
+      const elementos = data.elements || [];
+
+      // Deduplica por nome+coords
+      const vistos = new Set();
+      const prospects = [];
+      for(const el of elementos) {
+        const lat = el.lat || el.center?.lat;
+        const lng = el.lon || el.center?.lon;
+        if(!lat || !lng) continue;
+        const nome = el.tags?.name || el.tags?.['name:pt'] || '';
+        const chave = `${nome}|${lat.toFixed(4)}|${lng.toFixed(4)}`;
+        if(vistos.has(chave)) continue;
+        vistos.add(chave);
+        const cat = detectarCategoria(el.tags);
+        const naBase = jaEstaNaBase(nome, lat, lng);
+        const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
+        prospects.push({ lat, lng, nome: nome||'Sem nome', cat, naBase, dist, tags: el.tags||{}, osmId: el.id });
+      }
+
+      // Ordena por distância
+      prospects.sort((a,b) => a.dist - b.dist);
+
+      // Coloca pins no mapa
+      for(const p of prospects) {
+        const cor = p.naBase ? '#1A7A40' : '#1565C0';
+        const icone = L.divIcon({
+          className:'',
+          html:`<div style="width:26px;height:32px;position:relative;">
+            <div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+              background:${cor};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+          </div>`,
+          iconSize:[26,32], iconAnchor:[13,32], popupAnchor:[0,-34]
+        });
+        const m = L.marker([p.lat, p.lng], { icon: icone })
+          .addTo(mapaProsp)
+          .bindPopup(`<b>${catEmojisProsp[p.cat]||'🏪'} ${p.nome}</b>${p.naBase?'<br><span style="color:green;font-size:11px">✅ Na sua base</span>':''}`);
+        m.on('click', () => abrirProspect(p));
+        marcadoresProsp.push(m);
+      }
+
+      // Marcador "você" no mapa prospects
+      if(minhaLat) {
+        const eu = L.marker([minhaLat, minhaLng], { icon: criarIconeEu(), zIndexOffset:1000 })
+          .addTo(mapaProsp).bindPopup('<b>📍 Você</b>');
+        marcadoresProsp.push(eu);
+      }
+
+      // Renderiza lista
+      renderProspects(prospects);
+      const novos = prospects.filter(p=>!p.naBase).length;
+      const naBase = prospects.filter(p=>p.naBase).length;
+      status.textContent = `${prospects.length} encontrado(s) • ${novos} novo(s) • ${naBase} já na base`;
+      document.getElementById('prospTitulo').textContent = `${prospects.length} ESTABELECIMENTOS`;
+
+    } catch(e) {
+      console.error(e);
+      status.textContent = '❌ Erro na busca. Verifique sua conexão.';
+      document.getElementById('listaProspects').innerHTML = `<div class="empty"><div class="empty-icon">❌</div><div class="empty-title">ERRO NA BUSCA</div><div class="empty-sub">Verifique sua conexão<br>e tente novamente</div></div>`;
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" stroke="white" stroke-width="2.2"/><path d="M20 20l-3-3" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg> BUSCAR NOVAMENTE';
+  };
+
+  function renderProspects(lista) {
+    const el = document.getElementById('listaProspects');
+    if(lista.length === 0) {
+      el.innerHTML = `<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">NADA ENCONTRADO</div><div class="empty-sub">Tente aumentar o raio<br>ou adicionar mais categorias</div></div>`;
+      return;
+    }
+    el.innerHTML = lista.map(p => `
+      <div class="${p.naBase?'prosp-card na-base':'prosp-card'}" onclick="abrirProspect(${JSON.stringify(p).replace(/"/g,'&quot;')})">
+        <div style="font-size:26px; flex-shrink:0;">${catEmojisProsp[p.cat]||'🏪'}</div>
+        <div style="flex:1; min-width:0;">
+          <div style="font-size:14px; font-weight:800; color:var(--black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nome}</div>
+          <div style="font-size:11px; color:var(--gray); margin-top:2px;">${catNomes[p.cat]||p.cat}</div>
+          <div style="display:flex; gap:5px; margin-top:4px; flex-wrap:wrap;">
+            <span class="prosp-badge ${p.naBase?'base':'novo'}">${p.naBase?'✅ Na base':'🔵 Prospect'}</span>
+            <span class="tag dist">~${p.dist<1?(p.dist*1000).toFixed(0)+'m':p.dist.toFixed(1)+'km'}</span>
+          </div>
+        </div>
+        <button class="nav-mini" onclick="event.stopPropagation();prospSelecionado=${JSON.stringify(p).replace(/"/g,'&quot;')};abrirProspectGps()" style="flex-shrink:0;">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="white"/></svg>
+        </button>
+      </div>`).join('');
+  }
+
+  window.abrirProspect = (p) => {
+    if(typeof p === 'string') p = JSON.parse(p);
+    prospSelecionado = p;
+    document.getElementById('pEmoji').textContent = catEmojisProsp[p.cat]||'🏪';
+    document.getElementById('pNome').textContent = p.nome;
+    document.getElementById('pAddr').textContent = p.tags?.['addr:street']
+      ? `${p.tags['addr:street']}${p.tags['addr:housenumber']?', '+p.tags['addr:housenumber']:''}`
+      : `${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    document.getElementById('pCat').textContent = catNomes[p.cat]||p.cat;
+    document.getElementById('pDist').textContent = p.dist<1 ? `${(p.dist*1000).toFixed(0)} m` : `${p.dist.toFixed(1)} km`;
+    const aviso = document.getElementById('pNaBaseAviso');
+    const btnSalvar = document.getElementById('btnSalvarProspect');
+    if(p.naBase) {
+      aviso.style.display = 'block';
+      btnSalvar.style.display = 'none';
+    } else {
+      aviso.style.display = 'none';
+      btnSalvar.style.display = 'flex';
+    }
+    document.getElementById('ovProspect').classList.add('open');
+  };
+
+  window.addProspectRoteiro = () => {
+    if(!prospSelecionado) return;
+    const jaExiste = roteiroClientes.some(r => r._prospId === prospSelecionado.osmId);
+    if(jaExiste) { showToast('⚠️ Já está no roteiro!'); closeOv('ovProspect'); return; }
+    roteiroClientes.push({
+      id: 'prosp_'+prospSelecionado.osmId,
+      _prospId: prospSelecionado.osmId,
+      nome: prospSelecionado.nome,
+      categoria: prospSelecionado.cat,
+      prioridade: 'Média',
+      logradouro: prospSelecionado.tags?.['addr:street']||'',
+      numero: prospSelecionado.tags?.['addr:housenumber']||'',
+      bairro: '',
+      cidade: prospSelecionado.tags?.['addr:city']||'',
+      lat: prospSelecionado.lat,
+      lng: prospSelecionado.lng,
+      _isProspect: true
+    });
+    geocodeCache['prosp_'+prospSelecionado.osmId] = { lat: prospSelecionado.lat, lng: prospSelecionado.lng };
+    renderRoteiro();
+    atualizarStats();
+    closeOv('ovProspect');
+    showToast('✅ Prospect adicionado ao roteiro!');
+  };
+
+  window.salvarProspectComoCliente = async () => {
+    if(!prospSelecionado || !currentUser) return;
+    const btn = document.getElementById('btnSalvarProspect');
+    btn.disabled = true; btn.textContent = 'Salvando...';
+    try {
+      const ref = await addDoc(collection(db,'clientes'),{
+        uid: currentUser.uid,
+        nome: prospSelecionado.nome,
+        responsavel: '',
+        telefone: prospSelecionado.tags?.phone||prospSelecionado.tags?.['contact:phone']||'',
+        whatsapp: '',
+        categoria: prospSelecionado.cat,
+        prioridade: 'Média',
+        cep: prospSelecionado.tags?.['addr:postcode']||'',
+        logradouro: prospSelecionado.tags?.['addr:street']||'',
+        numero: prospSelecionado.tags?.['addr:housenumber']||'',
+        bairro: prospSelecionado.tags?.['addr:suburb']||'',
+        cidade: prospSelecionado.tags?.['addr:city']||'',
+        uf: prospSelecionado.tags?.['addr:state']||'',
+        obs: `Encontrado via busca GPS em ${new Date().toLocaleDateString('pt-BR')}`,
+        lat: prospSelecionado.lat,
+        lng: prospSelecionado.lng,
+        criadoEm: serverTimestamp()
+      });
+      geocodeCache[ref.id] = { lat: prospSelecionado.lat, lng: prospSelecionado.lng };
+      closeOv('ovProspect');
+      showToast('✅ Salvo como cliente!');
+    } catch(e) {
+      showToast('❌ Erro ao salvar');
+      console.error(e);
+    }
+    btn.disabled = false; btn.textContent = '💾 SALVAR COMO CLIENTE';
+  };
+
+  window.abrirProspectGps = () => {
+    if(!prospSelecionado) return;
+    const addr = encodeURIComponent(`${prospSelecionado.tags?.['addr:street']||''} ${prospSelecionado.tags?.['addr:housenumber']||''} ${prospSelecionado.tags?.['addr:city']||prospSelecionado.nome}`);
+    document.getElementById('ovGps').classList.add('open');
+    // Reutiliza modal de GPS — seta clienteSelecionado temporariamente
+    clienteSelecionado = {
+      logradouro: prospSelecionado.tags?.['addr:street']||prospSelecionado.nome,
+      numero: prospSelecionado.tags?.['addr:housenumber']||'',
+      cidade: prospSelecionado.tags?.['addr:city']||''
+    };
   };
 </script>
 </body>
