@@ -1793,40 +1793,85 @@
 
   // Busca via Foursquare Places API
   const FSQ_KEY = 'fsq3C4826dodGTajp9q+wXXMUYrdEji35Gfr9RYNDRavR9M=';
-  // Category IDs Foursquare para beleza/saúde
+  // Category IDs Foursquare v3 (formato longo)
   const fsCatIds = {
-    salao: '11099',      // Hair Salon
-    barbearia: '11100',  // Barbershop
-    esmalteria: '11103', // Nail Salon
-    terapia: '11099',    // Hair Salon (terapia capilar)
-    estetica: '11098',   // Beauty Salon
-    spa: '12061'         // Spa
+    salao: '4bf58dd8d48988d110951735',      // Hair Salon
+    barbearia: '4bf58dd8d48988d111951735',  // Barbershop
+    esmalteria: '4f04aaa62fb6e1c99f3db0ba', // Nail Salon
+    terapia: '4bf58dd8d48988d110951735',    // Hair Salon (terapia capilar)
+    estetica: '4bf58dd8d48988d10f951735',   // Beauty Salon
+    spa: '4bf58dd8d48988d1ed941735'         // Spa & Massage
+  };
+
+  // Termos de busca por categoria
+  const fsQueryTermos = {
+    salao: 'salão de beleza cabeleireiro',
+    barbearia: 'barbearia barber',
+    esmalteria: 'esmalteria manicure nail',
+    terapia: 'terapia capilar cabelo',
+    estetica: 'estética beauty salon',
+    spa: 'spa massagem'
   };
 
   async function buscarFoursquare(lat, lng, raioM, cats) {
     const catIds = [...new Set([...cats].map(c => fsCatIds[c]).filter(Boolean))];
-    const params = new URLSearchParams({
-      ll: `${lat},${lng}`,
-      radius: Math.min(raioM, 100000),
-      categories: catIds.join(','),
-      limit: 50,
-      fields: 'fsq_id,name,geocodes,categories,location,distance'
-    });
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 20000);
-    try {
-      const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
-        headers: {
-          'Authorization': FSQ_KEY,
-          'Accept': 'application/json'
-        },
-        signal: ctrl.signal
+    const todos = [];
+    const vistos = new Set();
+
+    // Busca por categoria ID
+    if(catIds.length > 0) {
+      const params = new URLSearchParams({
+        ll: `${lat},${lng}`,
+        radius: Math.min(raioM, 100000),
+        categories: catIds.join(','),
+        limit: 50,
+        fields: 'fsq_id,name,geocodes,categories,location,distance'
       });
-      clearTimeout(tid);
-      if(!r.ok) return [];
-      const d = await r.json();
-      return d.results || [];
-    } catch(e) { clearTimeout(tid); return []; }
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 20000);
+      try {
+        const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if(r.ok) {
+          const d = await r.json();
+          for(const el of (d.results||[])) {
+            if(!vistos.has(el.fsq_id)) { vistos.add(el.fsq_id); todos.push(el); }
+          }
+        }
+      } catch(e) { clearTimeout(tid); }
+    }
+
+    // Busca por query de texto (fallback e complemento)
+    const queries = [...new Set([...cats].map(c => fsQueryTermos[c]).filter(Boolean))];
+    for(const q of queries) {
+      const params = new URLSearchParams({
+        ll: `${lat},${lng}`,
+        radius: Math.min(raioM, 100000),
+        query: q,
+        limit: 30,
+        fields: 'fsq_id,name,geocodes,categories,location,distance'
+      });
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if(r.ok) {
+          const d = await r.json();
+          for(const el of (d.results||[])) {
+            if(!vistos.has(el.fsq_id)) { vistos.add(el.fsq_id); todos.push(el); }
+          }
+        }
+      } catch(e) { clearTimeout(tid); }
+    }
+
+    return todos;
   }
 
   // Detecta categoria do resultado OSM
