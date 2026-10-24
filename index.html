@@ -1791,37 +1791,42 @@
     }
   };
 
-  // Busca via Overpass API (dados completos do OSM)
-  async function buscarOverpass(lat, lng, raioM, shopVals) {
-    const tags = shopVals.map(v =>
-      v === 'spa'
-        ? `node["leisure"="spa"](around:${raioM},${lat},${lng});node["amenity"="spa"](around:${raioM},${lat},${lng});`
-        : `node["shop"="${v}"](around:${raioM},${lat},${lng});way["shop"="${v}"](around:${raioM},${lat},${lng});`
-    ).join('');
-    const query = `[out:json][timeout:25];(${tags});out center;`;
-    // Lista de mirrors Overpass que aceitam CORS
-    const endpoints = [
-      'https://overpass.kumi.systems/api/interpreter',
-      'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
-      'https://overpass-api.de/api/interpreter'
-    ];
-    for(const ep of endpoints) {
-      try {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 20000);
-        const r = await fetch(ep, {
-          method:'POST',
-          headers:{'Content-Type':'application/x-www-form-urlencoded'},
-          body:'data='+encodeURIComponent(query),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if(!r.ok) continue;
-        const d = await r.json();
-        return d.elements || [];
-      } catch(e) { continue; }
-    }
-    return [];
+  // Busca via Foursquare Places API
+  const FSQ_KEY = 'fsq3C4826dodGTajp9q+wXXMUYrdEji35Gfr9RYNDRavR9M=';
+  // Category IDs Foursquare para beleza/saúde
+  const fsCatIds = {
+    salao: '11099',      // Hair Salon
+    barbearia: '11100',  // Barbershop
+    esmalteria: '11103', // Nail Salon
+    terapia: '11099',    // Hair Salon (terapia capilar)
+    estetica: '11098',   // Beauty Salon
+    spa: '12061'         // Spa
+  };
+
+  async function buscarFoursquare(lat, lng, raioM, cats) {
+    const catIds = [...new Set([...cats].map(c => fsCatIds[c]).filter(Boolean))];
+    const params = new URLSearchParams({
+      ll: `${lat},${lng}`,
+      radius: Math.min(raioM, 100000),
+      categories: catIds.join(','),
+      limit: 50,
+      fields: 'fsq_id,name,geocodes,categories,location,distance'
+    });
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await fetch(`https://api.foursquare.com/v3/places/search?${params}`, {
+        headers: {
+          'Authorization': FSQ_KEY,
+          'Accept': 'application/json'
+        },
+        signal: ctrl.signal
+      });
+      clearTimeout(tid);
+      if(!r.ok) return [];
+      const d = await r.json();
+      return d.results || [];
+    } catch(e) { clearTimeout(tid); return []; }
   }
 
   // Detecta categoria do resultado OSM
@@ -1859,7 +1864,7 @@
     const status = document.getElementById('prospStatus');
     btn.disabled = true;
     btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px;display:inline-block;border-radius:50%;border-width:2px;border-style:solid;animation:spin .7s linear infinite"></div> Buscando...';
-    status.textContent = 'Consultando OpenStreetMap...';
+    status.textContent = 'Consultando Foursquare...';
 
     inicializarMapaProsp();
     marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
@@ -1873,33 +1878,31 @@
     mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
 
     try {
-      // Monta lista de shop values para as categorias selecionadas
-      const shopVals = [...new Set([...catsSelecionadas].map(c => osmShopTags[c]).filter(Boolean))];
-      status.textContent = `Buscando ${shopVals.length} tipo(s) em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'}...`;
+      status.textContent = `Buscando em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'} via Foursquare...`;
 
-      const elementos = await buscarOverpass(minhaLat, minhaLng, raioProspM, shopVals);
+      const resultados = await buscarFoursquare(minhaLat, minhaLng, raioProspM, catsSelecionadas);
 
       const vistos = new Set();
       const prospects = [];
-      for(const el of elementos) {
-        const lat = el.lat ?? el.center?.lat;
-        const lng = el.lon ?? el.center?.lon;
+      for(const el of resultados) {
+        const lat = el.geocodes?.main?.latitude;
+        const lng = el.geocodes?.main?.longitude;
         if(!lat || !lng) continue;
-        const nome = el.tags?.name || el.tags?.['name:pt'] || 'Sem nome';
+        const nome = el.name || 'Sem nome';
         const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
         if(vistos.has(chave)) continue;
         vistos.add(chave);
-        // Detecta categoria pelo shop tag
+        // Detecta categoria pelo ID Foursquare
+        const catId = el.categories?.[0]?.id?.toString() || '';
         let cat = 'estetica';
-        const shop = el.tags?.shop||'';
-        if(shop==='hairdresser') cat = catsSelecionadas.has('terapia') && !catsSelecionadas.has('salao') ? 'terapia' : 'salao';
-        else if(shop==='barber') cat = 'barbearia';
-        else if(shop==='nail_salon') cat = 'esmalteria';
-        else if(shop==='beauty') cat = 'estetica';
-        else if(shop==='spa'||el.tags?.leisure==='spa') cat = 'spa';
+        if(catId === '11099') cat = catsSelecionadas.has('terapia') && !catsSelecionadas.has('salao') ? 'terapia' : 'salao';
+        else if(catId === '11100') cat = 'barbearia';
+        else if(catId === '11103') cat = 'esmalteria';
+        else if(catId === '11098') cat = 'estetica';
+        else if(catId === '12061') cat = 'spa';
         const naBase = jaEstaNaBase(nome, lat, lng);
-        const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
-        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: el.tags||{}, osmId: el.id||chave });
+        const dist = el.distance ? el.distance/1000 : calcDistancia(minhaLat, minhaLng, lat, lng);
+        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.fsq_id||chave });
       }
 
       prospects.sort((a,b) => a.dist - b.dist);
