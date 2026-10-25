@@ -2032,24 +2032,30 @@
   // Verifica se prospect já está na base
   function jaEstaNaBase(nome, lat, lng) {
     if(!nome || !todosClientes || todosClientes.length === 0) return null;
-    const nomeLower = nome.toLowerCase().trim();
-    // Remove caracteres especiais para comparação mais flexível
     const normalizar = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
     const nomeNorm = normalizar(nome);
-    return todosClientes.find(c => {
+    const resultado = todosClientes.find(c => {
       if(!c.nome) return false;
-      if(normalizar(c.nome) === nomeNorm) return true;
-      // Verifica se nome do prospect está contido no nome do cliente ou vice-versa
       const cNorm = normalizar(c.nome);
-      if(nomeNorm.length > 5 && (cNorm.includes(nomeNorm) || nomeNorm.includes(cNorm))) return true;
-      // Verifica por coordenadas (menos de 80m = mesmo lugar)
-      const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
-      if(coords && lat && lng) {
-        const dist = calcDistancia(lat, lng, coords.lat, coords.lng);
-        if(dist < 0.08) return true;
+      // Comparação exata de nome (normalizado)
+      if(cNorm === nomeNorm) return true;
+      // Comparação parcial: um contém o outro
+      if(nomeNorm.length > 4 && (cNorm.includes(nomeNorm) || nomeNorm.includes(cNorm))) return true;
+      // Comparação por palavras em comum (pelo menos 2 palavras iguais)
+      const palavrasProsp = nomeNorm.split(/\s+/).filter(p => p.length > 3);
+      const palavrasCliente = cNorm.split(/\s+/).filter(p => p.length > 3);
+      const match = palavrasProsp.filter(p => palavrasCliente.includes(p));
+      if(match.length >= 2) return true;
+      // Verifica por coordenadas (menos de 150m = mesmo lugar)
+      const cLat = parseFloat(geocodeCache[c.id]?.lat || c.lat || 0);
+      const cLng = parseFloat(geocodeCache[c.id]?.lng || c.lng || 0);
+      if(cLat && cLng && lat && lng) {
+        const dist = calcDistancia(lat, lng, cLat, cLng);
+        if(dist < 0.15) return true; // 150m
       }
       return false;
     }) || null;
+    return resultado;
   }
 
   // Filtro ativo de prospects: 'todos' | 'base' | 'novos' | 'cnpj'
@@ -2124,10 +2130,13 @@
       }
       // Debug: mostra quantos clientes têm coordenadas agora
       const comCoords = todosClientes.filter(c => geocodeCache[c.id] || c.lat);
-      console.log(`[BASE] ${todosClientes.length} clientes total, ${comCoords.length} com coords:`,
-        todosClientes.map(c => ({ nome: c.nome, cache: geocodeCache[c.id], lat: c.lat })));
-      status.textContent = `✅ ${comCoords.length}/${todosClientes.length} cliente(s) da base localizados`;
-      await new Promise(r => setTimeout(r, 800));
+      console.log(`[BASE] ${todosClientes.length} clientes, ${comCoords.length} com coords:`);
+      todosClientes.forEach(c => {
+        const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
+        console.log(`  → "${c.nome}" | lat:${c.lat||'?'} lng:${c.lng||'?'} | cache:`, geocodeCache[c.id] || 'sem cache', '| addr:', [c.logradouro,c.numero,c.cidade].filter(Boolean).join(', '));
+      });
+      status.textContent = `✅ ${comCoords.length}/${todosClientes.length} cliente(s) localizados — buscando...`;
+      await new Promise(r => setTimeout(r, 500));
     }
 
     inicializarMapaProsp();
@@ -2147,6 +2156,23 @@
 
       const vistos = new Set();
       const prospects = [];
+
+      // PRIMEIRO: adiciona todos os clientes da base com coords como prospects verdes
+      for(const c of todosClientes) {
+        const cLat = parseFloat(geocodeCache[c.id]?.lat || c.lat || 0);
+        const cLng = parseFloat(geocodeCache[c.id]?.lng || c.lng || 0);
+        if(!cLat || !cLng) continue;
+        const chave = `${cLat.toFixed(4)}|${cLng.toFixed(4)}`;
+        vistos.add(chave); // marca para não duplicar com Google
+        const dist = calcDistancia(minhaLat, minhaLng, cLat, cLng);
+        prospects.push({
+          lat: cLat, lng: cLng, nome: c.nome,
+          cat: c.categoria || 'salao', naBase: c,
+          dist, tags: {}, osmId: 'base_'+c.id, _cnpj: false
+        });
+      }
+
+      // DEPOIS: adiciona resultados do Google que ainda não estão na lista
       for(const el of resultadosGoogle) {
         const lat = el.location?.latitude;
         const lng = el.location?.longitude;
