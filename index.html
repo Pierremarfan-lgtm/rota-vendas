@@ -734,6 +734,13 @@
       </button>
     </div>
 
+    <!-- ADICIONAR AO ROTEIRO EM LOTE -->
+    <div style="padding:8px 16px 0;">
+      <button onclick="adicionarProximosAoRoteiro()" style="width:100%;padding:11px;border-radius:12px;border:2px dashed #1A7A40;background:#F2FBF5;color:#1A7A40;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+        ➕ ADICIONAR OS 10 MAIS PRÓXIMOS AO ROTEIRO
+      </button>
+    </div>
+
     <!-- LISTA DE PROSPECTS -->
     <div style="padding:8px 16px 0;">
       <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:6px;" id="prospTitulo">RESULTADOS</div>
@@ -849,6 +856,14 @@
       </button>
       <button onclick="otimizarRoteiro()" style="flex:1;padding:10px;border-radius:11px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         ✨ Ordenar por Prioridade
+      </button>
+    </div>
+    <div style="display:flex;gap:8px;margin:8px 16px 0">
+      <button onclick="ordenarPorProximidade()" style="flex:1;padding:11px;border-radius:11px;border:none;background:#E8F1FF;color:#1565C0;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+        📍 Ordenar por Proximidade
+      </button>
+      <button onclick="iniciarRota()" style="flex:1;padding:11px;border-radius:11px;border:none;background:#1A7A40;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+        🗺️ Iniciar Rota
       </button>
     </div>
 
@@ -1415,6 +1430,111 @@
     showToast('✨ Roteiro ordenado por prioridade!');
   };
 
+  // Coordenadas de um item do roteiro (cache do geocoding ou lat/lng salvos)
+  function coordsRoteiro(c) {
+    const g = geocodeCache[c.id];
+    if(g && g.lat && g.lng) return { lat: parseFloat(g.lat), lng: parseFloat(g.lng) };
+    if(c.lat && c.lng) return { lat: parseFloat(c.lat), lng: parseFloat(c.lng) };
+    return null;
+  }
+
+  // Ordena o roteiro pelo vizinho mais próximo, partindo da posição atual
+  window.ordenarPorProximidade = () => {
+    if(roteiroClientes.length < 2) { showToast('Adicione mais clientes ao roteiro'); return; }
+    if(!minhaLat) { showToast('📍 GPS necessário para ordenar por proximidade'); return; }
+    const comCoords = roteiroClientes.filter(c => coordsRoteiro(c));
+    const semCoords = roteiroClientes.filter(c => !coordsRoteiro(c));
+    const ordem = [];
+    let lat = minhaLat, lng = minhaLng;
+    while(comCoords.length) {
+      let melhor = 0, melhorDist = Infinity;
+      comCoords.forEach((c, i) => {
+        const co = coordsRoteiro(c);
+        const d = calcDistancia(lat, lng, co.lat, co.lng);
+        if(d < melhorDist) { melhorDist = d; melhor = i; }
+      });
+      const prox = comCoords.splice(melhor, 1)[0];
+      const co = coordsRoteiro(prox);
+      lat = co.lat; lng = co.lng;
+      ordem.push(prox);
+    }
+    roteiroClientes = [...ordem, ...semCoords];
+    renderRoteiro();
+    showToast(semCoords.length
+      ? `📍 Ordenado! ${semCoords.length} parada(s) sem localização ficaram no fim`
+      : '📍 Roteiro ordenado pela rota mais curta!');
+  };
+
+  // Abre a rota completa no Google Maps (até 10 paradas por vez)
+  window.iniciarRota = () => {
+    const paradas = roteiroClientes.filter(c => coordsRoteiro(c));
+    if(paradas.length === 0) { showToast('Roteiro sem paradas com localização'); return; }
+    const MAX = 10;
+    const trecho = paradas.slice(0, MAX);
+    const pt = c => { const co = coordsRoteiro(c); return `${co.lat},${co.lng}`; };
+    const destino = pt(trecho[trecho.length - 1]);
+    const intermediarias = trecho.slice(0, -1).map(pt);
+    let url = `https://www.google.com/maps/dir/?api=1&destination=${destino}&travelmode=driving`;
+    if(intermediarias.length) url += `&waypoints=${encodeURIComponent(intermediarias.join('|'))}`;
+    if(paradas.length > MAX) showToast(`🗺️ Abrindo as ${MAX} primeiras de ${paradas.length} paradas`);
+    else if(paradas.length < roteiroClientes.length) showToast(`🗺️ ${roteiroClientes.length - paradas.length} parada(s) sem localização ficaram de fora`);
+    window.open(url, '_blank');
+  };
+
+  // Adiciona um prospect ao roteiro. Retorna true se adicionou, false se já estava.
+  function adicionarProspAoRoteiro(p) {
+    if(p.naBase && p.naBase.id) {
+      // Já é cliente da base: usa o cadastro real (evita duplicar)
+      const c = p.naBase;
+      if(roteiroClientes.some(r => r.id === c.id)) return false;
+      roteiroClientes.push({ ...c });
+      if(!coordsRoteiro(c)) geocodeCache[c.id] = { lat: p.lat, lng: p.lng };
+      return true;
+    }
+    const chave = p.osmId || `${p.lat.toFixed(5)}|${p.lng.toFixed(5)}`;
+    if(roteiroClientes.some(r => r._prospId === chave)) return false;
+    roteiroClientes.push({
+      id: 'prosp_' + chave,
+      _prospId: chave,
+      nome: p.nome,
+      categoria: p.cat,
+      prioridade: 'Média',
+      logradouro: p.tags?.['addr:street'] || '',
+      numero: p.tags?.['addr:housenumber'] || '',
+      bairro: '',
+      cidade: p.tags?.['addr:city'] || '',
+      lat: p.lat,
+      lng: p.lng,
+      _isProspect: true
+    });
+    geocodeCache['prosp_' + chave] = { lat: p.lat, lng: p.lng };
+    return true;
+  }
+
+  // Prospects que estão visíveis agora (respeita o filtro TODOS/BASE/NOVOS/CNPJ)
+  function listaProspFiltrada() {
+    let lista = prospectsTodos;
+    if(filtroProsp === 'base') lista = lista.filter(p => p.naBase);
+    else if(filtroProsp === 'novos') lista = lista.filter(p => !p.naBase);
+    else if(filtroProsp === 'cnpj') lista = lista.filter(p => p._cnpj);
+    return lista;
+  }
+
+  window.adicionarProximosAoRoteiro = () => {
+    const lista = listaProspFiltrada();
+    if(lista.length === 0) { showToast('Faça uma busca primeiro'); return; }
+    let add = 0;
+    for(const p of lista) {
+      if(add >= 10) break;
+      if(adicionarProspAoRoteiro(p)) add++;
+    }
+    if(add === 0) { showToast('⚠️ Esses já estão no roteiro'); return; }
+    renderRoteiro();
+    atualizarStats();
+    renderClientes(todosClientes);
+    showToast(`✅ ${add} adicionado(s) ao roteiro! Vá em Roteiro para ordenar`);
+  };
+
   // Calcula distância em km entre dois pontos (fórmula haversine)
   function calcDistancia(lat1, lng1, lat2, lng2) {
     const R = 6371;
@@ -1440,25 +1560,32 @@
     }
 
     // Calcula km estimados se tiver GPS
+    // Distância de cada trecho: minha posição → parada 1 → parada 2 → ...
     let kmTotal = 0;
+    const trechos = [];
     if(minhaLat && roteiroClientes.length > 0) {
       let latAnt = minhaLat, lngAnt = minhaLng;
       for(const c of roteiroClientes) {
-        const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
+        const coords = coordsRoteiro(c);
         if(coords) {
-          kmTotal += calcDistancia(latAnt, lngAnt, coords.lat, coords.lng);
+          const km = calcDistancia(latAnt, lngAnt, coords.lat, coords.lng);
+          trechos.push(km);
+          kmTotal += km;
           latAnt = coords.lat; lngAnt = coords.lng;
+        } else {
+          trechos.push(null);
         }
       }
     }
-    document.getElementById('rotStatKm').textContent = kmTotal > 0 ? kmTotal.toFixed(0) : '—';
+    document.getElementById('rotStatKm').textContent =
+      kmTotal > 0 ? (kmTotal < 10 ? kmTotal.toFixed(1) : kmTotal.toFixed(0)) : '—';
 
     el.innerHTML = roteiroClientes.map((c, i) => {
-      const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
       let distTxt = '';
-      if(coords && minhaLat) {
-        const km = calcDistancia(minhaLat, minhaLng, coords.lat, coords.lng);
-        distTxt = `<span class="rot-dist">~${km.toFixed(1)} km</span>`;
+      if(trechos[i] != null) {
+        const km = trechos[i];
+        const txt = km < 1 ? `${(km*1000).toFixed(0)} m` : `${km.toFixed(1)} km`;
+        distTxt = `<span class="rot-dist">${i === 0 ? '📍 de você' : '↪ da anterior'}: ~${txt}</span>`;
       }
       return `
       <div class="roteiro-item" onclick="abrirCliente('${c.id}')">
@@ -1620,8 +1747,18 @@
 
   window.openGps = () => { document.getElementById('ovGps').classList.add('open'); };
 
+  // Prospects (Google) não têm endereço completo: navega pela localização exata
+  function gpsPorCoordenadas(c) {
+    if(!c) return null;
+    if(!(c._isProspect || c._usarCoords || !c.logradouro)) return null;
+    return coordsRoteiro(c);
+  }
+
   window.abrirGoogleMaps = () => {
-    if(clienteSelecionado?.logradouro) {
+    const co = gpsPorCoordenadas(clienteSelecionado);
+    if(co) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${co.lat},${co.lng}&travelmode=driving`,'_blank');
+    } else if(clienteSelecionado?.logradouro) {
       const addr = encodeURIComponent(`${clienteSelecionado.logradouro} ${clienteSelecionado.numero}, ${clienteSelecionado.cidade}`);
       window.open(`https://www.google.com/maps/search/?api=1&query=${addr}`,'_blank');
     }
@@ -1629,7 +1766,10 @@
   };
 
   window.abrirWaze = () => {
-    if(clienteSelecionado?.logradouro) {
+    const co = gpsPorCoordenadas(clienteSelecionado);
+    if(co) {
+      window.open(`https://waze.com/ul?ll=${co.lat},${co.lng}&navigate=yes`,'_blank');
+    } else if(clienteSelecionado?.logradouro) {
       const addr = encodeURIComponent(`${clienteSelecionado.logradouro} ${clienteSelecionado.numero}, ${clienteSelecionado.cidade}`);
       window.open(`https://waze.com/ul?q=${addr}`,'_blank');
     }
@@ -2047,6 +2187,7 @@
                 _cnpj: true,
                 lat: pLat, lng: pLng,
                 nome: p.displayName?.text || 'Estabelecimento',
+                osmId: 'txt_' + chave,
                 cat: catBusca,
                 catBusca: catBusca,
                 types: p.types || [],
@@ -2352,27 +2493,14 @@
 
   window.addProspectRoteiro = () => {
     if(!prospSelecionado) return;
-    const jaExiste = roteiroClientes.some(r => r._prospId === prospSelecionado.osmId);
-    if(jaExiste) { showToast('⚠️ Já está no roteiro!'); closeOv('ovProspect'); return; }
-    roteiroClientes.push({
-      id: 'prosp_'+prospSelecionado.osmId,
-      _prospId: prospSelecionado.osmId,
-      nome: prospSelecionado.nome,
-      categoria: prospSelecionado.cat,
-      prioridade: 'Média',
-      logradouro: prospSelecionado.tags?.['addr:street']||'',
-      numero: prospSelecionado.tags?.['addr:housenumber']||'',
-      bairro: '',
-      cidade: prospSelecionado.tags?.['addr:city']||'',
-      lat: prospSelecionado.lat,
-      lng: prospSelecionado.lng,
-      _isProspect: true
-    });
-    geocodeCache['prosp_'+prospSelecionado.osmId] = { lat: prospSelecionado.lat, lng: prospSelecionado.lng };
+    if(!adicionarProspAoRoteiro(prospSelecionado)) {
+      showToast('⚠️ Já está no roteiro!'); closeOv('ovProspect'); return;
+    }
     renderRoteiro();
     atualizarStats();
+    renderClientes(todosClientes);
     closeOv('ovProspect');
-    showToast('✅ Prospect adicionado ao roteiro!');
+    showToast('✅ Adicionado ao roteiro!');
   };
 
   window.salvarProspectComoCliente = async () => {
@@ -2417,7 +2545,10 @@
     clienteSelecionado = {
       logradouro: prospSelecionado.tags?.['addr:street']||prospSelecionado.nome,
       numero: prospSelecionado.tags?.['addr:housenumber']||'',
-      cidade: prospSelecionado.tags?.['addr:city']||''
+      cidade: prospSelecionado.tags?.['addr:city']||'',
+      lat: prospSelecionado.lat,
+      lng: prospSelecionado.lng,
+      _usarCoords: true
     };
   };
 </script>
