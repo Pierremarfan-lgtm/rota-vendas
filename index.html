@@ -318,6 +318,14 @@
   .rot-actions { display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
   .rot-nav-btn { width:34px; height:34px; border-radius:4px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .rot-remove-btn { width:34px; height:24px; border-radius:3px; border:none; background:#FFF0F0; color:var(--red); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .rot-reg-btn { margin-top:8px; padding:7px 12px; border-radius:4px; border:1.5px solid var(--black); background:#fff; color:var(--black); font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; cursor:pointer; }
+  .rot-reg-btn.feito { border-color:var(--lgray); color:var(--gray); }
+  .roteiro-item.feita { background:#FAFAFA; }
+  .roteiro-item.feita .rot-name { color:var(--gray); }
+  .rot-res { display:inline-block; margin-top:7px; padding:4px 9px; border-radius:3px; font-size:11px; font-weight:800; }
+  .rot-res.comprou { background:#E0F2E9; color:#1A7A40; }
+  .rot-res.nao_comprou { background:#FFEBEE; color:#C62828; }
+  .rot-res.voltar { background:#FFF3CD; color:#8A6100; }
   .rot-visit-btn {
     width:100%; padding:12px; border-radius:6px; border:none;
     background:var(--green); color:#fff; font-family:'Nunito',sans-serif;
@@ -868,6 +876,12 @@
       </button>
     </div>
 
+    <div style="margin:8px 16px 0">
+      <button onclick="enviarRelatorio()" style="width:100%;padding:11px;border-radius:6px;border:none;background:#25D366;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+        📤 ENVIAR RELATÓRIO DO DIA (WHATSAPP)
+      </button>
+    </div>
+
     <!-- ABAS DOS DIAS DO PLANO -->
     <div id="rotDias" style="display:none;gap:6px;overflow-x:auto;padding:10px 16px 0;"></div>
     <div id="rotVagas" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin:8px 16px 0;padding:10px 12px;border-radius:6px;background:#FFF8E1;border:1.5px solid #FFE082;color:#8A6100;font-size:12px;font-weight:800;"></div>
@@ -925,6 +939,31 @@
     <div class="mactions">
       <button class="mbtn primary" onclick="gerarPlano()">✅ GERAR ROTEIRO</button>
       <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovPlano')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGISTRAR VISITA -->
+<div class="overlay" id="ovVisita" onclick="closeOv('ovVisita',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle" id="visNome"></div>
+    <div class="msub" id="visSub" style="margin-bottom:12px;"></div>
+    <div style="font-size:12px;font-weight:800;color:var(--black);margin-bottom:8px;">Como foi a visita?</div>
+    <div id="visBtns" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;"></div>
+    <div id="visValorBox" style="display:none;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:800;color:var(--gray);margin-bottom:4px;">VALOR DA VENDA (R$)</div>
+      <input id="visValor" type="text" inputmode="decimal" placeholder="Ex.: 350,00" oninput="atualizarBotaoVisita()" style="width:100%;padding:11px 12px;border:2px solid var(--xlight);border-radius:6px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;">
+    </div>
+    <div id="visDataBox" style="display:none;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:800;color:var(--gray);margin-bottom:4px;">VOLTAR EM</div>
+      <input id="visData" type="date" oninput="atualizarBotaoVisita()" style="width:100%;padding:11px 12px;border:2px solid var(--xlight);border-radius:6px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;">
+    </div>
+    <textarea id="visObs" rows="2" placeholder="Observação (opcional)" style="width:100%;padding:10px;border-radius:6px;border:2px solid var(--xlight);font-family:'Nunito',sans-serif;font-size:13px;margin-bottom:12px;resize:none;"></textarea>
+    <div class="mactions">
+      <button class="mbtn primary" id="btnSalvarVisita" onclick="salvarVisita()" disabled style="opacity:.45;">SALVAR VISITA</button>
+      <button class="mbtn danger" id="btnLimparVisita" onclick="limparVisita()" style="display:none;grid-column:span 2;">APAGAR REGISTRO</button>
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovVisita')">Fechar</button>
     </div>
   </div>
 </div>
@@ -1503,8 +1542,11 @@
   window.ordenarPorProximidade = () => {
     if(roteiroClientes.length < 2) { showToast('Adicione mais clientes ao roteiro'); return; }
     if(!minhaLat) { showToast('📍 GPS necessário para ordenar por proximidade'); return; }
-    const { ordem, semCoords } = ordenarVizinho(roteiroClientes, minhaLat, minhaLng);
-    roteiroClientes = [...ordem, ...semCoords];
+    const feitas = roteiroClientes.filter(c => c.visita);
+    const { ordem, semCoords } = ordenarVizinho(roteiroClientes.filter(c => !c.visita), minhaLat, minhaLng);
+    const nova = [...feitas, ...ordem, ...semCoords];
+    roteiroClientes.length = 0;            // mantém a mesma lista do dia no plano
+    roteiroClientes.push(...nova);
     renderRoteiro();
     showToast(semCoords.length
       ? `📍 Ordenado! ${semCoords.length} parada(s) sem localização ficaram no fim`
@@ -1513,7 +1555,9 @@
 
   // Abre a rota completa no Google Maps (até 10 paradas por vez)
   window.iniciarRota = () => {
-    const paradas = roteiroClientes.filter(c => coordsRoteiro(c));
+    const pendentes = roteiroClientes.filter(c => !c.visita);
+    if(pendentes.length === 0) { showToast('✅ Todas as visitas já foram registradas'); return; }
+    const paradas = pendentes.filter(c => coordsRoteiro(c));
     if(paradas.length === 0) { showToast('Roteiro sem paradas com localização'); return; }
     const MAX = 10;
     const trecho = paradas.slice(0, MAX);
@@ -1523,7 +1567,7 @@
     let url = `https://www.google.com/maps/dir/?api=1&destination=${destino}&travelmode=driving`;
     if(intermediarias.length) url += `&waypoints=${encodeURIComponent(intermediarias.join('|'))}`;
     if(paradas.length > MAX) showToast(`🗺️ Abrindo as ${MAX} primeiras de ${paradas.length} paradas`);
-    else if(paradas.length < roteiroClientes.length) showToast(`🗺️ ${roteiroClientes.length - paradas.length} parada(s) sem localização ficaram de fora`);
+    else if(paradas.length < pendentes.length) showToast(`🗺️ ${pendentes.length - paradas.length} parada(s) sem localização ficaram de fora`);
     window.open(url, '_blank');
   };
 
@@ -1551,7 +1595,8 @@
       cidade: c.cidade || '', uf: c.uf || '',
       lat: co ? co.lat : null, lng: co ? co.lng : null,
       _isProspect: !!c._isProspect, _prospId: c._prospId || '',
-      tipo: c.tipo || (c._isProspect ? 'novo' : 'base')
+      tipo: c.tipo || (c._isProspect ? 'novo' : 'base'),
+      visita: c.visita || null
     };
   }
 
@@ -1810,6 +1855,181 @@
     showToast(`✅ Roteiro pronto: ${total} visita(s) em ${dias.length} dia(s)`);
   };
 
+  // ══════════════════════════════════════════════
+  //  ETAPA 6 — REGISTRO DE VISITAS + RELATÓRIO WHATSAPP
+  // ══════════════════════════════════════════════
+  let visItemId = null;
+  let visResultado = '';
+  let avisouVisitaNuvem = false;
+  const RESULTADOS = {
+    comprou:     { rot: '✅ Comprou',      cor: '#1A7A40', fundo: '#E0F2E9' },
+    nao_comprou: { rot: '❌ Não comprou',  cor: '#C62828', fundo: '#FFEBEE' },
+    voltar:      { rot: '🔁 Voltar depois', cor: '#8A6100', fundo: '#FFF3CD' }
+  };
+
+  function ymdLocal(d) {
+    const z = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`;
+  }
+  function dmBR(ymd) { const [, m, d] = (ymd || '').split('-'); return d && m ? `${d}/${m}` : ''; }
+  function brl(v) { return 'R$ ' + Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+  // "1.250,50" ou "1250.5" ou "350" -> número
+  function parseValor(txt) {
+    let t = String(txt || '').replace(/[^\d,.]/g, '');
+    if(!t) return 0;
+    if(t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+    const n = parseFloat(t);
+    return isFinite(n) ? n : 0;
+  }
+
+  // Trecho do cartão: resultado já registrado + botão
+  function blocoVisita(c) {
+    const v = c.visita;
+    if(!v) return `<button class="rot-reg-btn" onclick="event.stopPropagation();abrirVisita('${c.id}')">✔ Registrar visita</button>`;
+    const r = RESULTADOS[v.resultado] || RESULTADOS.nao_comprou;
+    let txt = r.rot;
+    if(v.resultado === 'comprou') txt += ` • ${brl(v.valor)}`;
+    if(v.resultado === 'voltar' && v.voltarEm) txt += ` • ${dmBR(v.voltarEm)}`;
+    return `<div><span class="rot-res ${v.resultado}">${txt}</span></div>
+      <button class="rot-reg-btn feito" onclick="event.stopPropagation();abrirVisita('${c.id}')">✏️ Editar</button>`;
+  }
+
+  window.abrirVisita = (id) => {
+    const it = roteiroClientes.find(c => c.id === id);
+    if(!it) return;
+    visItemId = id;
+    visResultado = it.visita ? it.visita.resultado : '';
+    document.getElementById('visNome').textContent = it.nome;
+    document.getElementById('visSub').textContent = (catNomes[it.categoria] || '') + (it.logradouro ? ' • ' + it.logradouro : '');
+    document.getElementById('visValor').value = it.visita && it.visita.valor ? String(it.visita.valor).replace('.', ',') : '';
+    const amanha = new Date(); amanha.setDate(amanha.getDate() + 7);
+    document.getElementById('visData').value = (it.visita && it.visita.voltarEm) || ymdLocal(amanha);
+    document.getElementById('visObs').value = (it.visita && it.visita.obs) || '';
+    document.getElementById('btnLimparVisita').style.display = it.visita ? 'flex' : 'none';
+    renderVisBtns();
+    document.getElementById('ovVisita').classList.add('open');
+  };
+
+  function renderVisBtns() {
+    document.getElementById('visBtns').innerHTML = Object.entries(RESULTADOS).map(([k, r]) => {
+      const on = visResultado === k;
+      return `<button onclick="escolherResultado('${k}')" style="padding:14px 4px;border-radius:6px;border:2px solid ${r.cor};background:${on ? r.cor : '#fff'};color:${on ? '#fff' : r.cor};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;line-height:1.3;">${r.rot}</button>`;
+    }).join('');
+    document.getElementById('visValorBox').style.display = visResultado === 'comprou' ? 'block' : 'none';
+    document.getElementById('visDataBox').style.display = visResultado === 'voltar' ? 'block' : 'none';
+    atualizarBotaoVisita();
+  }
+
+  window.escolherResultado = (k) => { visResultado = k; renderVisBtns(); };
+
+  window.atualizarBotaoVisita = () => {
+    let ok = !!visResultado;
+    if(visResultado === 'comprou') ok = parseValor(document.getElementById('visValor').value) > 0;
+    if(visResultado === 'voltar') ok = !!document.getElementById('visData').value;
+    const b = document.getElementById('btnSalvarVisita');
+    b.disabled = !ok;
+    b.style.opacity = ok ? '1' : '.45';
+  };
+
+  window.salvarVisita = () => {
+    const it = roteiroClientes.find(c => c.id === visItemId);
+    if(!it || !visResultado) return;
+    const agora = new Date();
+    const v = {
+      resultado: visResultado,
+      valor: visResultado === 'comprou' ? parseValor(document.getElementById('visValor').value) : 0,
+      voltarEm: visResultado === 'voltar' ? document.getElementById('visData').value : '',
+      obs: document.getElementById('visObs').value.trim(),
+      data: ymdLocal(agora),
+      hora: agora.toTimeString().slice(0, 5),
+      gpsLat: minhaLat || null,
+      gpsLng: minhaLng || null
+    };
+    if(v.resultado === 'comprou' && !(v.valor > 0)) { showToast('Informe o valor da venda'); return; }
+    it.visita = v;
+    registrarLogVisita(it, v);
+    closeOv('ovVisita');
+    renderRoteiro();
+    const pend = roteiroClientes.filter(c => !c.visita).length;
+    showToast(pend === 0 ? '🎉 Todas as visitas do dia registradas!' : `✅ Visita registrada! Faltam ${pend}`);
+  };
+
+  window.limparVisita = () => {
+    const it = roteiroClientes.find(c => c.id === visItemId);
+    if(!it || !it.visita) return;
+    if(!confirm('Apagar o registro desta visita?')) return;
+    const antiga = it.visita;
+    it.visita = null;
+    if(currentUser) deleteDoc(doc(db, 'visitas', `${currentUser.uid}_${antiga.data}_${it.id}`)).catch(() => {});
+    closeOv('ovVisita');
+    renderRoteiro();
+    showToast('🗑️ Registro apagado');
+  };
+
+  // Cópia do registro em coleção própria (base do painel do administrador)
+  function registrarLogVisita(it, v) {
+    if(!currentUser) return;
+    const dados = {
+      uid: currentUser.uid,
+      vendedor: currentUser.displayName || currentUser.email || '',
+      itemId: it.id, nome: it.nome, tipo: it.tipo || 'base', categoria: it.categoria || '',
+      resultado: v.resultado, valor: v.valor, voltarEm: v.voltarEm, obs: v.obs,
+      data: v.data, hora: v.hora, gpsLat: v.gpsLat, gpsLng: v.gpsLng,
+      lat: coordsRoteiro(it)?.lat ?? null, lng: coordsRoteiro(it)?.lng ?? null,
+      diaDoPlano: diaAtual + 1,
+      atualizadoEm: serverTimestamp()
+    };
+    setDoc(doc(db, 'visitas', `${currentUser.uid}_${v.data}_${it.id}`), dados).catch(e => {
+      console.warn('[VISITA] log nuvem:', e);
+      if(!avisouVisitaNuvem) { avisouVisitaNuvem = true; showToast('⚠️ Visita salva só neste aparelho'); }
+    });
+  }
+
+  // Texto do relatório do dia
+  function montarRelatorio() {
+    const feitas = roteiroClientes.filter(c => c.visita);
+    const comp = feitas.filter(c => c.visita.resultado === 'comprou');
+    const nao = feitas.filter(c => c.visita.resultado === 'nao_comprou');
+    const volt = feitas.filter(c => c.visita.resultado === 'voltar');
+    const total = comp.reduce((a, c) => a + (c.visita.valor || 0), 0);
+    const data = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const vendedor = currentUser?.displayName || currentUser?.email || 'Vendedor';
+    const nDias = planoAtual ? planoAtual.dias.length : 1;
+    const L = [];
+    L.push('📋 *RELATÓRIO DE VISITAS*');
+    L.push(`📅 ${data}`);
+    L.push(`👤 ${vendedor}`);
+    if(nDias > 1) L.push(`🗓️ Dia ${diaAtual + 1} de ${nDias} do roteiro`);
+    L.push('');
+    L.push('*RESUMO*');
+    L.push(`Paradas planejadas: ${roteiroClientes.length}`);
+    L.push(`Visitas feitas: ${feitas.length}`);
+    L.push(`✅ Compraram: ${comp.length}${comp.length ? ' — ' + brl(total) : ''}`);
+    L.push(`❌ Não compraram: ${nao.length}`);
+    L.push(`🔁 Voltar depois: ${volt.length}`);
+    L.push(`⏳ Pendentes: ${roteiroClientes.length - feitas.length}`);
+    L.push('');
+    L.push('*VISITAS*');
+    roteiroClientes.forEach((c, i) => {
+      const v = c.visita;
+      let linha = `${i + 1}. ${c.nome} — `;
+      if(!v) linha += '⏳ Pendente';
+      else if(v.resultado === 'comprou') linha += `✅ Comprou ${brl(v.valor)}`;
+      else if(v.resultado === 'nao_comprou') linha += '❌ Não comprou';
+      else linha += `🔁 Voltar em ${dmBR(v.voltarEm)}`;
+      if(v && v.obs) linha += ` (${v.obs})`;
+      L.push(linha);
+    });
+    return L.join('\n');
+  }
+
+  window.enviarRelatorio = () => {
+    if(roteiroClientes.length === 0) { showToast('Monte um roteiro primeiro'); return; }
+    if(!roteiroClientes.some(c => c.visita)) { showToast('Registre ao menos uma visita para gerar o relatório'); return; }
+    window.open('https://wa.me/?text=' + encodeURIComponent(montarRelatorio()), '_blank');
+  };
+
   // ── Completar o dia com outros tipos (escolher a dedo ou os mais próximos)
   let compCands = [];
   let compSel = new Set();
@@ -1914,6 +2134,7 @@
   window.pedirCancelamento = (id) => {
     const it = roteiroClientes.find(c => c.id === id);
     if(!it) return;
+    if(it.visita) { showToast('Esta visita já foi registrada. Apague o registro para cancelar.'); return; }
     cancelPendenteId = id;
     cancelMotivo = '';
     document.getElementById('cancelNome').textContent = it.nome;
@@ -2026,7 +2247,8 @@
     const hoje = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('roteiroData').textContent = hoje.toUpperCase();
     document.getElementById('roteiroSubtitulo').textContent =
-      roteiroClientes.length === 0 ? 'Nenhum cliente no roteiro ainda' : `${roteiroClientes.length} parada(s) planejada(s)`;
+      roteiroClientes.length === 0 ? 'Nenhum cliente no roteiro ainda'
+        : `${roteiroClientes.length} parada(s) • ${roteiroClientes.filter(c => c.visita).length} visitada(s)`;
     document.getElementById('rotStatVisitas').textContent = roteiroClientes.length;
     document.getElementById('rotStatPrio').textContent = roteiroClientes.filter(c=>c.prioridade==='Alta').length;
 
@@ -2066,7 +2288,7 @@
         distTxt = `<span class="rot-dist">${i === 0 ? '📍 de você' : '↪ da anterior'}: ~${txt}</span>`;
       }
       return `
-      <div class="roteiro-item" onclick="abrirCliente('${c.id}')">
+      <div class="roteiro-item ${c.visita ? 'feita' : ''}" onclick="abrirCliente('${c.id}')">
         <div class="rot-num">${i+1}</div>
         <div class="rot-info">
           <div class="rot-name">${catEmojis[c.categoria]||'🏪'} ${c.nome}</div>
@@ -2076,6 +2298,7 @@
             <span class="tag ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}">${c.prioridade||'—'}</span>
             ${distTxt}
           </div>
+          ${blocoVisita(c)}
         </div>
         <div class="rot-actions">
           <button class="rot-nav-btn" onclick="event.stopPropagation();clienteSelecionado=roteiroClientes.find(x=>x.id==='${c.id}');openGps()">
