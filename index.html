@@ -736,8 +736,8 @@
 
     <!-- ADICIONAR AO ROTEIRO EM LOTE -->
     <div style="padding:8px 16px 0;">
-      <button onclick="adicionarProximosAoRoteiro()" style="width:100%;padding:11px;border-radius:12px;border:2px dashed #1A7A40;background:#F2FBF5;color:#1A7A40;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
-        ➕ ADICIONAR OS 10 MAIS PRÓXIMOS AO ROTEIRO
+      <button onclick="abrirPlanejar()" style="width:100%;padding:11px;border-radius:12px;border:2px dashed #1A7A40;background:#F2FBF5;color:#1A7A40;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+        📅 PLANEJAR ROTEIRO (1 A 5 DIAS)
       </button>
     </div>
 
@@ -867,6 +867,10 @@
       </button>
     </div>
 
+    <!-- ABAS DOS DIAS DO PLANO -->
+    <div id="rotDias" style="display:none;gap:6px;overflow-x:auto;padding:10px 16px 0;"></div>
+    <div id="rotReserva" style="display:none;margin:8px 16px 0;padding:8px 12px;border-radius:10px;background:#F2FBF5;color:#1A7A40;font-size:11px;font-weight:800;"></div>
+
     <div style="padding:10px 16px 0">
       <div class="clist" id="listaRoteiro">
         <div class="empty">
@@ -901,6 +905,41 @@
       <div class="nlbl">Perfil</div>
     </div>
   </nav>
+</div>
+
+<!-- MODAL PLANEJAR ROTEIRO -->
+<div class="overlay" id="ovPlano" onclick="closeOv('ovPlano',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">📅 PLANEJAR ROTEIRO</div>
+    <div class="msub" id="planoInfo" style="margin-bottom:14px;"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">QUANTOS DIAS?</div>
+    <div id="planoDias" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">VISITAS POR DIA</div>
+    <div id="planoVisitas" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
+    <div id="planoPrevia" style="background:var(--bg);border-radius:12px;padding:11px 12px;font-size:12px;font-weight:700;color:var(--dark);line-height:1.6;margin-bottom:14px;"></div>
+    <div class="mactions">
+      <button class="mbtn primary" onclick="gerarPlano()">✅ GERAR ROTEIRO</button>
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovPlano')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CANCELAR VISITA (motivo obrigatório; não fecha tocando fora) -->
+<div class="overlay" id="ovCancelar">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">❌ CANCELAR VISITA</div>
+    <div class="msub" id="cancelNome" style="margin-bottom:12px;"></div>
+    <div style="font-size:12px;font-weight:800;color:var(--black);margin-bottom:8px;">Por que está tirando da rota? <span style="color:var(--red)">(obrigatório)</span></div>
+    <div id="cancelMotivos" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
+    <textarea id="cancelTexto" rows="3" placeholder="Descreva o motivo..." oninput="atualizarBotaoCancelar()" style="display:none;width:100%;padding:10px;border-radius:12px;border:1.5px solid var(--lgray);font-family:'Nunito',sans-serif;font-size:13px;margin-bottom:10px;resize:none;"></textarea>
+    <div id="cancelSubInfo" style="font-size:11px;font-weight:800;color:#1A7A40;margin-bottom:12px;"></div>
+    <div class="mactions">
+      <button class="mbtn danger" id="btnConfirmaCancel" onclick="confirmarCancelamento()" disabled style="grid-column:span 2;opacity:.45;">CONFIRMAR E TROCAR</button>
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="fecharCancelar()">VOLTAR (MANTER VISITA)</button>
+    </div>
+  </div>
 </div>
 
 <!-- MODAL PROSPECT -->
@@ -1006,7 +1045,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-app.js";
   import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
+  import { getFirestore, collection, addDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot, updateDoc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/12.14.0/firebase-firestore.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyD4aFJauyLXGBRWiQ6JawG-wBcMYnwrpM8",
@@ -1024,7 +1063,9 @@
   // ── ESTADO GLOBAL
   let currentUser = null;
   let todosClientes = [];
-  let roteiroClientes = []; // clientes no roteiro do dia
+  let roteiroClientes = []; // clientes no roteiro do dia (dia que está aberto)
+  let planoAtual = null;    // plano de vários dias: { visitasPorDia, dias:[{itens}], reserva, cancelados, historico }
+  let diaAtual = 0;         // índice do dia aberto no plano
   let clienteSelecionado = null;
   let minhaLat = null, minhaLng = null;
   let mapa = null;
@@ -1047,6 +1088,7 @@
       document.getElementById('userEmail').textContent = user.email;
       inicializarMapa();
       carregarClientes();
+      carregarPlano();
       obterLocalizacao();
     } else {
       currentUser = null;
@@ -1282,7 +1324,10 @@
   };
 
   window.fazerLogout = async () => {
+    clearTimeout(salvarPlanoTimer);
     roteiroClientes = [];
+    planoAtual = null;
+    diaAtual = 0;
     await signOut(auth);
     closeOv('ovUser');
   };
@@ -1404,18 +1449,14 @@
     showToast('✅ Adicionado ao roteiro!');
   };
 
-  window.removerDoRoteiro = (id) => {
-    roteiroClientes = roteiroClientes.filter(r => r.id !== id);
-    renderRoteiro();
-    atualizarStats();
-    renderClientes(todosClientes);
-    showToast('🗑️ Removido do roteiro');
-  };
-
   window.limparRoteiro = () => {
     if(roteiroClientes.length === 0) { showToast('Roteiro já está vazio'); return; }
-    if(!confirm('Limpar todo o roteiro de hoje?')) return;
+    const dias = planoAtual ? planoAtual.dias.length : 1;
+    if(!confirm(dias > 1 ? `Limpar o roteiro inteiro (${dias} dias)?` : 'Limpar todo o roteiro?')) return;
     roteiroClientes = [];
+    planoAtual = null;
+    diaAtual = 0;
+    apagarPlanoSalvo();
     renderRoteiro();
     atualizarStats();
     renderClientes(todosClientes);
@@ -1442,22 +1483,7 @@
   window.ordenarPorProximidade = () => {
     if(roteiroClientes.length < 2) { showToast('Adicione mais clientes ao roteiro'); return; }
     if(!minhaLat) { showToast('📍 GPS necessário para ordenar por proximidade'); return; }
-    const comCoords = roteiroClientes.filter(c => coordsRoteiro(c));
-    const semCoords = roteiroClientes.filter(c => !coordsRoteiro(c));
-    const ordem = [];
-    let lat = minhaLat, lng = minhaLng;
-    while(comCoords.length) {
-      let melhor = 0, melhorDist = Infinity;
-      comCoords.forEach((c, i) => {
-        const co = coordsRoteiro(c);
-        const d = calcDistancia(lat, lng, co.lat, co.lng);
-        if(d < melhorDist) { melhorDist = d; melhor = i; }
-      });
-      const prox = comCoords.splice(melhor, 1)[0];
-      const co = coordsRoteiro(prox);
-      lat = co.lat; lng = co.lng;
-      ordem.push(prox);
-    }
+    const { ordem, semCoords } = ordenarVizinho(roteiroClientes, minhaLat, minhaLng);
     roteiroClientes = [...ordem, ...semCoords];
     renderRoteiro();
     showToast(semCoords.length
@@ -1481,33 +1507,171 @@
     window.open(url, '_blank');
   };
 
-  // Adiciona um prospect ao roteiro. Retorna true se adicionou, false se já estava.
-  function adicionarProspAoRoteiro(p) {
+  // ══════════════════════════════════════════════
+  //  PLANO DE ROTEIRO (vários dias + reserva + cancelamento com motivo)
+  // ══════════════════════════════════════════════
+  let salvarPlanoTimer = null;
+  let avisouPlanoNuvem = false;
+  let planoSel = { dias: 1, visitas: 10 };
+  let cancelPendenteId = null;
+  let cancelMotivo = '';
+  const MOTIVOS_CANCELAR = ['Fechado','Já tem fornecedor','Não tem interesse','Ninguém atende','Endereço errado','Muito longe','Outro'];
+
+  function novoPlano() {
+    return { visitasPorDia: 10, dias: [{ itens: [] }], reserva: [], cancelados: [], historico: [], criadoEm: Date.now() };
+  }
+
+  // Versão enxuta do item (só o que precisa ser salvo; sem valores indefinidos)
+  function itemSlim(c) {
+    const co = coordsRoteiro(c);
+    return {
+      id: c.id || '', nome: c.nome || '', categoria: c.categoria || 'salao',
+      prioridade: c.prioridade || 'Média', telefone: c.telefone || '',
+      logradouro: c.logradouro || '', numero: c.numero || '', bairro: c.bairro || '',
+      cidade: c.cidade || '', uf: c.uf || '',
+      lat: co ? co.lat : null, lng: co ? co.lng : null,
+      _isProspect: !!c._isProspect, _prospId: c._prospId || ''
+    };
+  }
+
+  // Converte um prospect da busca em item de roteiro
+  function prospParaItem(p) {
     if(p.naBase && p.naBase.id) {
-      // Já é cliente da base: usa o cadastro real (evita duplicar)
-      const c = p.naBase;
-      if(roteiroClientes.some(r => r.id === c.id)) return false;
-      roteiroClientes.push({ ...c });
-      if(!coordsRoteiro(c)) geocodeCache[c.id] = { lat: p.lat, lng: p.lng };
-      return true;
+      const co = coordsRoteiro(p.naBase) || { lat: p.lat, lng: p.lng };
+      return itemSlim({ ...p.naBase, lat: co.lat, lng: co.lng });
     }
     const chave = p.osmId || `${p.lat.toFixed(5)}|${p.lng.toFixed(5)}`;
-    if(roteiroClientes.some(r => r._prospId === chave)) return false;
-    roteiroClientes.push({
-      id: 'prosp_' + chave,
-      _prospId: chave,
-      nome: p.nome,
-      categoria: p.cat,
+    return itemSlim({
+      id: 'prosp_' + chave, _prospId: chave, nome: p.nome, categoria: p.cat,
       prioridade: 'Média',
-      logradouro: p.tags?.['addr:street'] || '',
-      numero: p.tags?.['addr:housenumber'] || '',
-      bairro: '',
-      cidade: p.tags?.['addr:city'] || '',
-      lat: p.lat,
-      lng: p.lng,
-      _isProspect: true
+      logradouro: p.tags?.['addr:street'] || '', numero: p.tags?.['addr:housenumber'] || '',
+      cidade: p.tags?.['addr:city'] || '', lat: p.lat, lng: p.lng, _isProspect: true
     });
-    geocodeCache['prosp_' + chave] = { lat: p.lat, lng: p.lng };
+  }
+
+  // Ordena itens pelo vizinho mais próximo a partir de um ponto
+  function ordenarVizinho(itens, lat0, lng0) {
+    const comCoords = itens.filter(c => coordsRoteiro(c));
+    const semCoords = itens.filter(c => !coordsRoteiro(c));
+    const ordem = [];
+    let lat = lat0, lng = lng0;
+    while(comCoords.length) {
+      let melhor = 0, melhorDist = Infinity;
+      comCoords.forEach((c, i) => {
+        const co = coordsRoteiro(c);
+        const d = calcDistancia(lat, lng, co.lat, co.lng);
+        if(d < melhorDist) { melhorDist = d; melhor = i; }
+      });
+      const prox = comCoords.splice(melhor, 1)[0];
+      const co = coordsRoteiro(prox);
+      lat = co.lat; lng = co.lng;
+      ordem.push(prox);
+    }
+    return { ordem, semCoords };
+  }
+
+  // ── Salvar / carregar o plano (nuvem + este aparelho)
+  function agendarSalvarPlano() {
+    clearTimeout(salvarPlanoTimer);
+    salvarPlanoTimer = setTimeout(salvarPlano, 800);
+  }
+
+  function chaveLocalPlano() { return 'rotaPlano_' + (currentUser?.uid || ''); }
+
+  async function salvarPlano() {
+    if(!currentUser || !planoAtual) return;
+    const dados = {
+      uid: currentUser.uid,
+      visitasPorDia: planoAtual.visitasPorDia,
+      dias: planoAtual.dias.map(d => ({ itens: d.itens.map(itemSlim) })),
+      reserva: planoAtual.reserva.map(itemSlim),
+      cancelados: planoAtual.cancelados,
+      historico: planoAtual.historico || [],
+      diaAtual,
+      criadoEm: planoAtual.criadoEm,
+      atualizadoEm: Date.now()
+    };
+    try { localStorage.setItem(chaveLocalPlano(), JSON.stringify(dados)); } catch(e) {}
+    try {
+      await setDoc(doc(db, 'planos', currentUser.uid), dados);
+    } catch(e) {
+      console.warn('[PLANO] não salvou na nuvem:', e);
+      if(!avisouPlanoNuvem) { avisouPlanoNuvem = true; showToast('⚠️ Roteiro salvo só neste aparelho'); }
+    }
+  }
+
+  async function apagarPlanoSalvo() {
+    if(!currentUser) return;
+    clearTimeout(salvarPlanoTimer);
+    try { localStorage.removeItem(chaveLocalPlano()); } catch(e) {}
+    try { await deleteDoc(doc(db, 'planos', currentUser.uid)); } catch(e) { console.warn('[PLANO] apagar:', e); }
+  }
+
+  async function carregarPlano() {
+    if(!currentUser) return;
+    let nuvem = null, local = null;
+    try { const s = await getDoc(doc(db, 'planos', currentUser.uid)); if(s.exists()) nuvem = s.data(); } catch(e) { console.warn('[PLANO] ler nuvem:', e); }
+    try { const raw = localStorage.getItem(chaveLocalPlano()); if(raw) local = JSON.parse(raw); } catch(e) {}
+    const dados = (nuvem && local) ? ((local.atualizadoEm || 0) > (nuvem.atualizadoEm || 0) ? local : nuvem) : (nuvem || local);
+    if(!dados || !Array.isArray(dados.dias) || dados.dias.length === 0) return;
+    planoAtual = {
+      visitasPorDia: dados.visitasPorDia || 10,
+      dias: dados.dias.map(d => ({ itens: d.itens || [] })),
+      reserva: dados.reserva || [],
+      cancelados: dados.cancelados || [],
+      historico: dados.historico || [],
+      criadoEm: dados.criadoEm || Date.now()
+    };
+    diaAtual = Math.min(dados.diaAtual || 0, planoAtual.dias.length - 1);
+    roteiroClientes = planoAtual.dias[diaAtual].itens;
+    for(const d of planoAtual.dias) for(const it of d.itens) {
+      if(it.lat && it.lng && !geocodeCache[it.id]) geocodeCache[it.id] = { lat: it.lat, lng: it.lng };
+    }
+    renderRoteiro();
+    atualizarStats();
+    renderClientes(todosClientes);
+  }
+
+  // ── Abas dos dias
+  function renderDias() {
+    const caixa = document.getElementById('rotDias');
+    const reserva = document.getElementById('rotReserva');
+    if(!caixa || !reserva) return;
+    if(!planoAtual) { caixa.style.display = 'none'; reserva.style.display = 'none'; return; }
+    if(planoAtual.dias.length > 1) {
+      caixa.style.display = 'flex';
+      caixa.innerHTML = planoAtual.dias.map((d, i) => {
+        const ativo = i === diaAtual;
+        return `<button onclick="mudarDia(${i})" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">Dia ${i+1} · ${d.itens.length}</button>`;
+      }).join('');
+    } else {
+      caixa.style.display = 'none';
+    }
+    const nCanc = planoAtual.cancelados.length;
+    if(planoAtual.reserva.length > 0 || nCanc > 0) {
+      reserva.style.display = 'block';
+      reserva.textContent = `🧰 Reserva: ${planoAtual.reserva.length} prospect(s) para substituir • ❌ Cancelados: ${nCanc}`;
+    } else {
+      reserva.style.display = 'none';
+    }
+  }
+
+  window.mudarDia = (i) => {
+    if(!planoAtual || !planoAtual.dias[i]) return;
+    diaAtual = i;
+    roteiroClientes = planoAtual.dias[i].itens;
+    renderRoteiro();
+    atualizarStats();
+  };
+
+  // ── Prospect avulso no roteiro (dia que está aberto)
+  function adicionarProspAoRoteiro(p) {
+    const item = prospParaItem(p);
+    if(planoAtual && planoAtual.dias.some(d => d.itens.some(r => r.id === item.id))) return false;
+    if(roteiroClientes.some(r => r.id === item.id)) return false;
+    if(planoAtual) planoAtual.reserva = planoAtual.reserva.filter(r => r.id !== item.id);
+    roteiroClientes.push(item);
+    if(item.lat && item.lng) geocodeCache[item.id] = { lat: item.lat, lng: item.lng };
     return true;
   }
 
@@ -1520,19 +1684,171 @@
     return lista;
   }
 
-  window.adicionarProximosAoRoteiro = () => {
-    const lista = listaProspFiltrada();
-    if(lista.length === 0) { showToast('Faça uma busca primeiro'); return; }
-    let add = 0;
-    for(const p of lista) {
-      if(add >= 10) break;
-      if(adicionarProspAoRoteiro(p)) add++;
+  // Lista candidata ao plano: sem repetidos e sem os que já foram cancelados no plano atual
+  function montarPool() {
+    const excluir = new Set((planoAtual?.cancelados || []).map(x => x.id));
+    const vistos = new Set();
+    const pool = [];
+    for(const p of listaProspFiltrada()) {
+      const it = prospParaItem(p);
+      if(excluir.has(it.id) || vistos.has(it.id)) continue;
+      vistos.add(it.id);
+      pool.push(it);
     }
-    if(add === 0) { showToast('⚠️ Esses já estão no roteiro'); return; }
+    return pool;
+  }
+
+  // ── Janela "Planejar roteiro"
+  window.abrirPlanejar = () => {
+    if(listaProspFiltrada().length === 0) { showToast('Faça uma busca primeiro'); return; }
+    renderPlanejar();
+    document.getElementById('ovPlano').classList.add('open');
+  };
+
+  window.setPlanoSel = (campo, valor) => { planoSel[campo] = valor; renderPlanejar(); };
+
+  function renderPlanejar() {
+    const N = montarPool().length;
+    const chip = (rotulo, ativo, acao) =>
+      `<button onclick="${acao}" style="padding:9px 16px;border-radius:20px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rotulo}</button>`;
+    document.getElementById('planoInfo').textContent = `${N} prospect(s) na lista atual`;
+    document.getElementById('planoDias').innerHTML =
+      [[1,'1 dia'],[2,'2 dias'],[3,'3 dias'],[4,'4 dias'],[5,'Semana (5)']]
+        .map(([v, r]) => chip(r, planoSel.dias === v, `setPlanoSel('dias',${v})`)).join('');
+    document.getElementById('planoVisitas').innerHTML =
+      [8, 10, 12].map(v => chip(String(v), planoSel.visitas === v, `setPlanoSel('visitas',${v})`)).join('');
+
+    const total = Math.min(N, planoSel.dias * planoSel.visitas);
+    const diasEfet = Math.max(1, Math.ceil(total / planoSel.visitas));
+    const ideal = Math.ceil(planoSel.dias * planoSel.visitas * 1.3);
+    let html = `📋 <b>${total}</b> visita(s) em <b>${diasEfet}</b> dia(s)<br>🧰 <b>${N - total}</b> prospect(s) ficam de reserva para trocar cancelamentos`;
+    if(diasEfet < planoSel.dias) html += `<br><span style="color:var(--red)">⚠️ A busca só tem ${N} prospects: o roteiro terá ${diasEfet} dia(s).</span>`;
+    if(N < ideal) html += `<br>💡 Para ${planoSel.dias} dia(s) com folga, o ideal é buscar ~${ideal} prospects (hoje: ${N}).`;
+    document.getElementById('planoPrevia').innerHTML = html;
+  }
+
+  window.gerarPlano = () => {
+    const pool = montarPool();
+    if(pool.length === 0) { showToast('Nenhum prospect disponível'); return; }
+    const jaTem = planoAtual && planoAtual.dias.some(d => d.itens.length > 0);
+    if(jaTem && !confirm('Já existe um roteiro. Substituir pelo novo?')) return;
+
+    const porDia = planoSel.visitas;
+    const total = Math.min(pool.length, planoSel.dias * porDia);
+    const escolhidos = pool.slice(0, total);   // os mais perto de você (lista já vem por distância)
+    const reserva = pool.slice(total);
+    const origemLat = minhaLat || escolhidos[0].lat, origemLng = minhaLng || escolhidos[0].lng;
+
+    // Cadeia pelo vizinho mais próximo, cortada em dias: dia 1 = mais perto, os outros vão se afastando
+    const cadeia = ordenarVizinho(escolhidos, origemLat, origemLng).ordem;
+    const dias = [];
+    for(let i = 0; i < cadeia.length; i += porDia) {
+      const fatia = cadeia.slice(i, i + porDia);
+      dias.push({ itens: ordenarVizinho(fatia, origemLat, origemLng).ordem });
+    }
+
+    const historico = [...(planoAtual?.historico || []), ...(planoAtual?.cancelados || [])];
+    planoAtual = { visitasPorDia: porDia, dias, reserva, cancelados: [], historico, criadoEm: Date.now() };
+    diaAtual = 0;
+    roteiroClientes = planoAtual.dias[0].itens;
+    for(const d of dias) for(const it of d.itens) if(it.lat) geocodeCache[it.id] = { lat: it.lat, lng: it.lng };
+
     renderRoteiro();
     atualizarStats();
     renderClientes(todosClientes);
-    showToast(`✅ ${add} adicionado(s) ao roteiro! Vá em Roteiro para ordenar`);
+    closeOv('ovPlano');
+    setAppTab('roteiro', null, document.getElementById('nav-roteiro'));
+    showToast(`✅ Roteiro pronto: ${total} visita(s) em ${dias.length} dia(s)`);
+  };
+
+  // ── Cancelar visita (motivo obrigatório) e trocar pelo próximo da reserva
+  window.pedirCancelamento = (id) => {
+    const it = roteiroClientes.find(c => c.id === id);
+    if(!it) return;
+    cancelPendenteId = id;
+    cancelMotivo = '';
+    document.getElementById('cancelNome').textContent = it.nome;
+    document.getElementById('cancelTexto').value = '';
+    document.getElementById('cancelTexto').style.display = 'none';
+    const nRes = planoAtual ? planoAtual.reserva.length : 0;
+    document.getElementById('cancelSubInfo').textContent = nRes > 0
+      ? `🔄 Outro prospect da reserva (${nRes}) entra no lugar.`
+      : '⚠️ Reserva vazia: a visita será só removida do dia.';
+    renderMotivos();
+    atualizarBotaoCancelar();
+    document.getElementById('ovCancelar').classList.add('open');
+  };
+
+  function renderMotivos() {
+    document.getElementById('cancelMotivos').innerHTML = MOTIVOS_CANCELAR.map(m => {
+      const ativo = cancelMotivo === m;
+      return `<button onclick="escolherMotivo('${m}')" style="padding:9px 13px;border-radius:20px;border:2px solid ${ativo?'var(--red)':'var(--lgray)'};background:${ativo?'#FFF0F0':'#fff'};color:${ativo?'var(--red)':'var(--dark)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${m}</button>`;
+    }).join('');
+  }
+
+  window.escolherMotivo = (m) => {
+    cancelMotivo = m;
+    const txt = document.getElementById('cancelTexto');
+    txt.style.display = (m === 'Outro') ? 'block' : 'none';
+    renderMotivos();
+    atualizarBotaoCancelar();
+  };
+
+  window.atualizarBotaoCancelar = () => {
+    const texto = document.getElementById('cancelTexto').value.trim();
+    const ok = cancelMotivo && (cancelMotivo !== 'Outro' || texto.length >= 3);
+    const btn = document.getElementById('btnConfirmaCancel');
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '.45';
+  };
+
+  window.fecharCancelar = () => {
+    cancelPendenteId = null;
+    document.getElementById('ovCancelar').classList.remove('open');
+  };
+
+  window.confirmarCancelamento = () => {
+    const texto = document.getElementById('cancelTexto').value.trim();
+    if(!cancelPendenteId || !cancelMotivo) return;
+    if(cancelMotivo === 'Outro' && texto.length < 3) { showToast('Descreva o motivo'); return; }
+    const idx = roteiroClientes.findIndex(c => c.id === cancelPendenteId);
+    if(idx < 0) { fecharCancelar(); return; }
+
+    const removido = roteiroClientes[idx];
+    if(!planoAtual) planoAtual = novoPlano();
+    const registro = {
+      id: removido.id, nome: removido.nome, motivo: cancelMotivo,
+      texto: cancelMotivo === 'Outro' ? texto : '',
+      dia: diaAtual + 1, em: new Date().toISOString()
+    };
+    planoAtual.cancelados.push(registro);
+    // Registro separado na nuvem (para o painel do administrador depois). Se falhar, segue normal.
+    if(currentUser) {
+      addDoc(collection(db, 'cancelamentos'), { uid: currentUser.uid, ...registro, criadoEm: serverTimestamp() })
+        .catch(e => console.warn('[CANCEL] log nuvem:', e));
+    }
+
+    // Substituto: o prospect da reserva mais perto de quem saiu
+    let sub = null;
+    if(planoAtual.reserva.length > 0) {
+      const co = coordsRoteiro(removido) || (minhaLat ? { lat: minhaLat, lng: minhaLng } : null);
+      let melhor = 0, melhorDist = Infinity;
+      planoAtual.reserva.forEach((r, i) => {
+        const rc = coordsRoteiro(r);
+        const d = (co && rc) ? calcDistancia(co.lat, co.lng, rc.lat, rc.lng) : i;
+        if(d < melhorDist) { melhorDist = d; melhor = i; }
+      });
+      sub = planoAtual.reserva.splice(melhor, 1)[0];
+    }
+    const nova = roteiroClientes.filter(c => c.id !== removido.id);
+    if(sub) nova.splice(idx, 0, sub);
+    roteiroClientes = nova;
+
+    fecharCancelar();
+    renderRoteiro();
+    atualizarStats();
+    renderClientes(todosClientes);
+    showToast(sub ? `🔄 ${sub.nome} entrou no lugar` : '🗑️ Visita removida (reserva vazia)');
   };
 
   // Calcula distância em km entre dois pontos (fórmula haversine)
@@ -1545,6 +1861,13 @@
   }
 
   function renderRoteiro() {
+    if(roteiroClientes.length > 0 && !planoAtual) planoAtual = novoPlano();
+    if(planoAtual) {
+      if(!planoAtual.dias[diaAtual]) planoAtual.dias[diaAtual] = { itens: [] };
+      planoAtual.dias[diaAtual].itens = roteiroClientes;
+      agendarSalvarPlano();
+    }
+    renderDias();
     const hoje = new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'});
     document.getElementById('roteiroData').textContent = hoje.toUpperCase();
     document.getElementById('roteiroSubtitulo').textContent =
@@ -1602,7 +1925,7 @@
           <button class="rot-nav-btn" onclick="event.stopPropagation();clienteSelecionado=roteiroClientes.find(x=>x.id==='${c.id}');openGps()">
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M12 2L4 20l8-4 8 4L12 2z" fill="white"/></svg>
           </button>
-          <button class="rot-remove-btn" onclick="event.stopPropagation();removerDoRoteiro('${c.id}')">✕</button>
+          <button class="rot-remove-btn" onclick="event.stopPropagation();pedirCancelamento('${c.id}')">✕</button>
         </div>
       </div>`;
     }).join('');
