@@ -50,10 +50,10 @@
 
   .login-tabs {
     display:flex; gap:0; background:var(--xlight);
-    border-radius:12px; padding:4px; margin-bottom:22px;
+    border-radius:6px; padding:4px; margin-bottom:22px;
   }
   .ltab {
-    flex:1; padding:9px; border-radius:9px; border:none;
+    flex:1; padding:9px; border-radius:4px; border:none;
     font-family:'Nunito',sans-serif; font-size:13px; font-weight:800;
     cursor:pointer; transition:all .2s; background:transparent; color:var(--gray);
   }
@@ -63,7 +63,7 @@
   .lfield label { font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:5px; }
   .lfield input {
     width:100%; padding:14px 16px;
-    border:2px solid var(--xlight); border-radius:13px;
+    border:2px solid var(--xlight); border-radius:6px;
     background:var(--bg); color:var(--dark);
     font-family:'Nunito',sans-serif; font-size:15px; font-weight:700;
     outline:none; transition:all .2s;
@@ -72,7 +72,7 @@
   .lfield input::placeholder { color:var(--lgray); }
 
   .login-btn {
-    width:100%; padding:16px; border-radius:13px; border:none;
+    width:100%; padding:16px; border-radius:6px; border:none;
     background:var(--black); color:#fff;
     font-family:'Nunito',sans-serif; font-size:16px; font-weight:900;
     letter-spacing:.5px; cursor:pointer;
@@ -132,17 +132,17 @@
   /* ── INÍCIO ── */
   .gps-bar {
     margin:12px 16px 0;
-    background:var(--white); border-radius:13px;
+    background:var(--white); border-radius:6px;
     padding:10px 14px; box-shadow:var(--shadow);
     display:flex; align-items:center; gap:10px;
   }
   .gps-dot { width:8px; height:8px; border-radius:50%; background:#111; animation:blink 1.5s infinite; flex-shrink:0; }
   @keyframes blink { 0%,100%{opacity:1}50%{opacity:.2} }
   .gps-txt { flex:1; font-size:12px; font-weight:800; color:var(--mid); }
-  .gps-badge { font-size:10px; font-weight:800; color:var(--gray); background:var(--xlight); padding:3px 8px; border-radius:6px; }
+  .gps-badge { font-size:10px; font-weight:800; color:var(--gray); background:var(--xlight); padding:3px 8px; border-radius:3px; }
 
   .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:12px 16px 0; }
-  .stat { background:var(--white); border-radius:14px; padding:13px 10px; text-align:center; box-shadow:var(--shadow); border-top:3px solid var(--black); }
+  .stat { background:var(--white); border-radius:6px; padding:13px 10px; text-align:center; box-shadow:var(--shadow); border-top:3px solid var(--black); }
   .stat.s2 { border-color:#555; }
   .stat.s3 { border-color:#999; }
   .stat-n { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--black); }
@@ -163,7 +163,7 @@
   .legend-dot.prospect { background:#1565C0; }
 
   #mapa {
-    width:100%; height:240px; border-radius:16px;
+    width:100%; height:240px; border-radius:6px;
     box-shadow:var(--shadow); overflow:hidden;
     border:1.5px solid var(--xlight);
     background:#e8e8e8;
@@ -173,7 +173,7 @@
     display:flex; gap:8px; margin-top:8px;
   }
   .map-btn {
-    flex:1; padding:9px 8px; border-radius:10px; border:none;
+    flex:1; padding:9px 8px; border-radius:4px; border:none;
     font-family:'Nunito',sans-serif; font-size:11px; font-weight:800;
     cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px;
     text-transform:uppercase; letter-spacing:.3px; transition:all .2s;
@@ -194,7 +194,7 @@
   .clist { display:flex; flex-direction:column; gap:9px; padding:0 16px; }
   .ccard {
     display:flex; align-items:center; gap:11px;
-    background:var(--white); border-radius:15px;
+    background:var(--white); border-radius:6px;
     padding:12px; box-shadow:var(--shadow);
     cursor:pointer; transition:all .2s;
     border-left:4px solid var(--lgray);
@@ -208,19 +208,19 @@
   .ccard-name { font-size:14px; font-weight:800; color:var(--black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ccard-addr { font-size:11px; color:var(--gray); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ccard-meta { display:flex; gap:5px; margin-top:4px; }
-  .tag { padding:2px 7px; border-radius:5px; font-size:9px; font-weight:800; text-transform:uppercase; }
+  .tag { padding:2px 7px; border-radius:3px; font-size:9px; font-weight:800; text-transform:uppercase; }
   .tag.prio { background:#111; color:#fff; }
   .tag.pend { background:#EBEBEB; color:#444; }
   .tag.done { background:#E0F2E9; color:var(--green); }
   .tag.dist { background:var(--xlight); color:var(--gray); }
-  .nav-mini { width:32px; height:32px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+  .nav-mini { width:32px; height:32px; border-radius:4px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
 
   /* EMPTY STATE */
   .empty { display:flex; flex-direction:column; align-items:center; padding:40px 24px; text-align:center; }
   .empty-icon { font-size:48px; margin-bottom:12px; }
   .empty-title { font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:1.5px; color:var(--black); margin-bottom:5px; }
   .empty-sub { font-size:13px; color:var(--gray); font-weight:700; line-height:1.5; }
-  .empty-btn { margin-top:18px; padding:12px 24px; border-radius:12px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:13px; font-weight:900; cursor:pointer; }
+  .empty-btn { margin-top:18px; padding:12px 24px; border-radius:6px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:13px; font-weight:900; cursor:pointer; }
 
   /* LOADING */
   .loading { display:flex; align-items:center; justify-content:center; padding:30px; gap:10px; color:var(--gray); font-weight:700; font-size:13px; }
@@ -228,20 +228,20 @@
   @keyframes spin { to { transform:rotate(360deg); } }
 
   /* ── CLIENTES TAB ── */
-  .search-wrap { display:flex; align-items:center; gap:10px; background:var(--white); border-radius:13px; padding:10px 14px; box-shadow:var(--shadow); margin:12px 16px 0; }
-  .raio-btn { flex:1; padding:7px 4px; border-radius:9px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:10px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .search-wrap { display:flex; align-items:center; gap:10px; background:var(--white); border-radius:6px; padding:10px 14px; box-shadow:var(--shadow); margin:12px 16px 0; }
+  .raio-btn { flex:1; padding:7px 4px; border-radius:4px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:10px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
   .raio-btn.active { background:var(--black); color:#fff; border-color:var(--black); }
-  .raio-prosp { padding:8px 10px; border-radius:10px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .raio-prosp { padding:8px 10px; border-radius:4px; border:2px solid var(--xlight); background:var(--white); font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
   .raio-prosp.active { background:var(--black); color:#fff; border-color:var(--black); }
-  .cat-check { display:flex; align-items:center; gap:8px; background:var(--bg); border:2px solid var(--xlight); border-radius:12px; padding:10px 12px; cursor:pointer; transition:all .18s; }
+  .cat-check { display:flex; align-items:center; gap:8px; background:var(--bg); border:2px solid var(--xlight); border-radius:6px; padding:10px 12px; cursor:pointer; transition:all .18s; }
   .cat-check.sel { background:var(--black); border-color:var(--black); }
   .cat-check.sel .cc-lbl { color:#fff; }
   .cc-icon { font-size:18px; flex-shrink:0; }
   .cc-lbl { font-size:11px; font-weight:800; color:var(--gray); }
-  .prosp-card { display:flex; align-items:flex-start; gap:10px; background:var(--white); border-radius:14px; padding:12px; box-shadow:var(--shadow); border-left:4px solid #1565C0; cursor:pointer; transition:all .2s; }
+  .prosp-card { display:flex; align-items:flex-start; gap:10px; background:var(--white); border-radius:6px; padding:12px; box-shadow:var(--shadow); border-left:4px solid #1565C0; cursor:pointer; transition:all .2s; }
   .prosp-card:active { transform:scale(.98); }
   .prosp-card.na-base { border-left-color:var(--green); }
-  .prosp-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; }
+  .prosp-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:3px; }
   .prosp-badge.novo { background:#E3F0FF; color:#1565C0; }
   .prosp-badge.base { background:#E0F2E9; color:var(--green); }
   .prosp-badge.cnpj { background:#FFF3E0; color:#E65100; }
@@ -249,17 +249,17 @@
   .filtro-prosp-btn:not(.ativo) { opacity:0.55; }
   .search-wrap input { flex:1; border:none; outline:none; background:none; font-family:'Nunito',sans-serif; font-size:14px; font-weight:600; color:var(--dark); }
   .search-wrap input::placeholder { color:var(--lgray); }
-  .search-icon { width:34px; height:34px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .search-icon { width:34px; height:34px; border-radius:4px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
 
   /* ── CADASTRO TAB ── */
   .form-wrap { padding:14px 16px; }
-  .scard { background:var(--white); border-radius:16px; padding:16px; box-shadow:var(--shadow); margin-bottom:12px; }
+  .scard { background:var(--white); border-radius:6px; padding:16px; box-shadow:var(--shadow); margin-bottom:12px; }
   .scard-title { font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:12px; display:flex; align-items:center; gap:7px; }
   .field { margin-bottom:12px; }
   .field:last-child { margin-bottom:0; }
   .field label { font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; display:block; margin-bottom:5px; }
   .field input, .field select, .field textarea {
-    width:100%; padding:12px 14px; border:2px solid var(--xlight); border-radius:12px;
+    width:100%; padding:12px 14px; border:2px solid var(--xlight); border-radius:6px;
     background:var(--bg); color:var(--dark); font-family:'Nunito',sans-serif;
     font-size:14px; font-weight:700; outline:none; transition:all .2s; -webkit-appearance:none;
   }
@@ -268,17 +268,17 @@
   .field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   .cep-row { display:flex; gap:8px; }
   .cep-row input { flex:1; }
-  .cep-btn { width:46px; height:46px; border-radius:12px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; align-self:flex-end; }
+  .cep-btn { width:46px; height:46px; border-radius:6px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; align-self:flex-end; }
   .cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .cat-item { background:var(--bg); border:2px solid var(--xlight); border-radius:12px; padding:10px 6px; text-align:center; cursor:pointer; transition:all .18s; }
+  .cat-item { background:var(--bg); border:2px solid var(--xlight); border-radius:6px; padding:10px 6px; text-align:center; cursor:pointer; transition:all .18s; }
   .cat-item.sel { background:var(--black); border-color:var(--black); }
   .cat-item .ci { font-size:22px; margin-bottom:3px; }
   .cat-item .cl { font-size:9px; font-weight:800; color:var(--gray); text-transform:uppercase; }
   .cat-item.sel .cl { color:rgba(255,255,255,.8); }
   .pill-group { display:flex; gap:8px; flex-wrap:wrap; }
-  .pill { padding:7px 14px; border-radius:20px; border:2px solid var(--lgray); background:#fff; font-size:12px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
+  .pill { padding:7px 14px; border-radius:6px; border:2px solid var(--lgray); background:#fff; font-size:12px; font-weight:800; color:var(--gray); cursor:pointer; transition:all .18s; }
   .pill.sel { background:var(--black); color:#fff; border-color:var(--black); }
-  .save-btn { width:100%; padding:15px; border-radius:13px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:15px; font-weight:900; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .save-btn { width:100%; padding:15px; border-radius:6px; border:none; background:var(--black); color:#fff; font-family:'Nunito',sans-serif; font-size:15px; font-weight:900; cursor:pointer; box-shadow:0 4px 14px rgba(0,0,0,.22); transition:all .2s; display:flex; align-items:center; justify-content:center; gap:8px; }
   .save-btn:active { transform:scale(.97); }
   .save-btn:disabled { background:var(--lgray); box-shadow:none; }
   .cep-msg { font-size:11px; font-weight:700; margin-top:4px; }
@@ -286,20 +286,20 @@
   /* ── ROTEIRO TAB ── */
   .roteiro-header {
     background:var(--white); margin:12px 16px 0;
-    border-radius:14px; padding:14px 16px; box-shadow:var(--shadow);
+    border-radius:6px; padding:14px 16px; box-shadow:var(--shadow);
   }
   .roteiro-date {
     font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:2px; color:var(--black);
   }
   .roteiro-sub { font-size:12px; color:var(--gray); font-weight:700; margin-top:2px; }
   .roteiro-stats { display:flex; gap:12px; margin-top:10px; }
-  .rot-stat { background:var(--bg); border-radius:10px; padding:8px 12px; text-align:center; flex:1; }
+  .rot-stat { background:var(--bg); border-radius:4px; padding:8px 12px; text-align:center; flex:1; }
   .rot-stat-n { font-family:'Bebas Neue',sans-serif; font-size:22px; color:var(--black); }
   .rot-stat-l { font-size:9px; font-weight:800; color:var(--gray); text-transform:uppercase; }
 
   .roteiro-item {
     display:flex; align-items:flex-start; gap:12px;
-    background:var(--white); border-radius:14px;
+    background:var(--white); border-radius:6px;
     padding:13px; box-shadow:var(--shadow); cursor:pointer;
     transition:all .2s; position:relative; overflow:hidden;
   }
@@ -312,13 +312,14 @@
   .rot-info { flex:1; min-width:0; }
   .rot-name { font-size:14px; font-weight:800; color:var(--black); }
   .rot-addr { font-size:11px; color:var(--gray); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .rot-meta { display:flex; gap:6px; margin-top:5px; align-items:center; }
-  .rot-dist { font-size:10px; font-weight:800; color:var(--mid); background:var(--xlight); padding:2px 8px; border-radius:6px; }
+  .rot-meta { display:flex; gap:6px; margin-top:5px; align-items:center; flex-wrap:wrap; }
+  .rot-meta .prosp-badge, .rot-meta .tag, .rot-meta .rot-dist { white-space:nowrap; }
+  .rot-dist { font-size:10px; font-weight:800; color:var(--mid); background:var(--xlight); padding:2px 8px; border-radius:3px; }
   .rot-actions { display:flex; flex-direction:column; gap:5px; align-items:flex-end; }
-  .rot-nav-btn { width:34px; height:34px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
-  .rot-remove-btn { width:34px; height:24px; border-radius:7px; border:none; background:#FFF0F0; color:var(--red); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .rot-nav-btn { width:34px; height:34px; border-radius:4px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .rot-remove-btn { width:34px; height:24px; border-radius:3px; border:none; background:#FFF0F0; color:var(--red); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .rot-visit-btn {
-    width:100%; padding:12px; border-radius:12px; border:none;
+    width:100%; padding:12px; border-radius:6px; border:none;
     background:var(--green); color:#fff; font-family:'Nunito',sans-serif;
     font-size:12px; font-weight:900; cursor:pointer; margin-top:8px;
     display:flex; align-items:center; justify-content:center; gap:6px;
@@ -326,7 +327,7 @@
 
   /* ── BOTTOM NAV ── */
   .bnav { position:fixed; bottom:0; left:0; right:0; z-index:100; background:var(--white); border-top:1px solid var(--xlight); padding:8px 0 22px; display:flex; justify-content:space-around; align-items:center; box-shadow:0 -4px 20px rgba(0,0,0,.07); }
-  .nitem { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:4px 12px; border-radius:12px; transition:all .2s; position:relative; }
+  .nitem { display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; padding:4px 12px; border-radius:6px; transition:all .2s; position:relative; }
   .nitem.active { background:#F0F0F0; }
   .nind { position:absolute; top:-2px; left:50%; transform:translateX(-50%); width:18px; height:3px; background:var(--black); border-radius:0 0 3px 3px; }
   .nlbl { font-size:9px; font-weight:800; color:var(--gray); letter-spacing:.3px; text-transform:uppercase; }
@@ -336,7 +337,7 @@
   /* MODAL */
   .overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.4); backdrop-filter:blur(5px); display:none; align-items:flex-end; justify-content:center; }
   .overlay.open { display:flex; }
-  .modal { width:100%; max-width:440px; background:var(--white); border-radius:24px 24px 0 0; padding:20px 18px 34px; animation:up .3s ease; }
+  .modal { width:100%; max-width:440px; background:var(--white); border-radius:14px 14px 0 0; padding:20px 18px 34px; animation:up .3s ease; }
   @keyframes up { from{transform:translateY(100%)}to{transform:translateY(0)} }
   .mhandle { width:38px; height:4px; background:var(--xlight); border-radius:2px; margin:0 auto 16px; }
   .mhead { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
@@ -344,23 +345,23 @@
   .mtitle { font-size:17px; font-weight:900; color:var(--black); }
   .msub { font-size:12px; color:var(--gray); margin-top:2px; }
   .mgrid { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:14px; }
-  .mitem { background:var(--bg); border-radius:12px; padding:11px; }
+  .mitem { background:var(--bg); border-radius:6px; padding:11px; }
   .mitem-l { font-size:10px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; margin-bottom:3px; }
   .mitem-v { font-size:13px; font-weight:800; color:var(--black); }
   .mactions { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
-  .mbtn { padding:13px; border-radius:13px; border:none; font-family:'Nunito',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; text-transform:uppercase; }
+  .mbtn { padding:13px; border-radius:6px; border:none; font-family:'Nunito',sans-serif; font-size:13px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:7px; text-transform:uppercase; }
   .mbtn.primary { background:var(--black); color:#fff; grid-column:span 2; }
   .mbtn.sec { background:var(--bg); color:var(--dark); border:1.5px solid var(--lgray); }
   .mbtn.danger { background:#FFF0F0; color:var(--red); border:1.5px solid #FFD5D5; }
   .mbtn.success { background:#E0F2E9; color:var(--green); border:1.5px solid #B2DFCC; grid-column:span 2; }
 
   /* TOAST */
-  .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--black); color:#fff; padding:11px 20px; border-radius:12px; font-size:13px; font-weight:800; z-index:300; opacity:0; transition:all .3s; white-space:nowrap; pointer-events:none; }
+  .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--black); color:#fff; padding:11px 20px; border-radius:6px; font-size:13px; font-weight:800; z-index:300; opacity:0; transition:all .3s; white-space:nowrap; pointer-events:none; }
   .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
   /* LEAFLET CUSTOMIZATIONS */
   .leaflet-popup-content-wrapper {
-    border-radius:12px; box-shadow:0 4px 20px rgba(0,0,0,.2);
+    border-radius:6px; box-shadow:0 4px 20px rgba(0,0,0,.2);
     font-family:'Nunito',sans-serif;
   }
   .leaflet-popup-content { margin:10px 14px; font-size:12px; font-weight:700; }
@@ -559,7 +560,7 @@
     <!-- BOTÃO SPAZZIO VENDAS -->
     <div style="margin:12px 16px 0">
       <button onclick="window.open('https://spazzio-vendas.vercel.app','_blank')" style="
-        width:100%; padding:14px 16px; border-radius:14px; border:none;
+        width:100%; padding:14px 16px; border-radius:6px; border:none;
         background:var(--black); color:#fff;
         font-family:'Nunito',sans-serif; font-size:14px; font-weight:900;
         cursor:pointer; display:flex; align-items:center; justify-content:center; gap:10px;
@@ -597,7 +598,7 @@
       <!-- Linha 1: Categoria + Prioridade -->
       <div style="display:flex; gap:8px;">
         <select id="filtroCategoria" onchange="filtrarClientes()" style="
-          flex:1; padding:9px 12px; border-radius:11px; border:2px solid var(--xlight);
+          flex:1; padding:9px 12px; border-radius:4px; border:2px solid var(--xlight);
           background:var(--white); color:var(--dark); font-family:'Nunito',sans-serif;
           font-size:12px; font-weight:800; outline:none; -webkit-appearance:none;
         ">
@@ -610,7 +611,7 @@
           <option value="outro">🏪 Outro</option>
         </select>
         <select id="filtroPrioridade" onchange="filtrarClientes()" style="
-          flex:1; padding:9px 12px; border-radius:11px; border:2px solid var(--xlight);
+          flex:1; padding:9px 12px; border-radius:4px; border:2px solid var(--xlight);
           background:var(--white); color:var(--dark); font-family:'Nunito',sans-serif;
           font-size:12px; font-weight:800; outline:none; -webkit-appearance:none;
         ">
@@ -632,7 +633,7 @@
           <button class="raio-btn" onclick="setRaio(10,this)">10 km</button>
         </div>
         <button onclick="limparFiltros()" style="
-          padding:7px 10px; border-radius:9px; border:none;
+          padding:7px 10px; border-radius:4px; border:none;
           background:var(--xlight); color:var(--gray);
           font-family:'Nunito',sans-serif; font-size:10px; font-weight:800;
           cursor:pointer; white-space:nowrap;
@@ -654,11 +655,11 @@
   <div class="tab-pane" id="tab-prospectar">
 
     <!-- PAINEL DE BUSCA -->
-    <div style="margin:12px 16px 0; background:var(--white); border-radius:16px; padding:16px; box-shadow:var(--shadow);">
+    <div style="margin:12px 16px 0; background:var(--white); border-radius:6px; padding:16px; box-shadow:var(--shadow);">
       <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1.5px; color:var(--black); margin-bottom:12px;">🔍 BUSCAR PROSPECTS</div>
 
       <!-- Raio fixo 3km -->
-      <div style="margin-bottom:12px; background:#F0F7FF; border-radius:10px; padding:10px 12px; border-left:3px solid #1565C0;">
+      <div style="margin-bottom:12px; background:#F0F7FF; border-radius:4px; padding:10px 12px; border-left:3px solid #1565C0;">
         <div style="font-size:12px; font-weight:800; color:#1565C0;">📍 Área de busca: 3 km ao redor de você</div>
         <div style="font-size:11px; color:var(--gray); margin-top:2px;">Varre toda a região em 7 zonas automaticamente</div>
       </div>
@@ -696,7 +697,7 @@
 
       <!-- Botão buscar -->
       <button onclick="buscarProspects()" id="btnBuscarProsp" style="
-        width:100%; padding:14px; border-radius:13px; border:none;
+        width:100%; padding:14px; border-radius:6px; border:none;
         background:var(--black); color:#fff;
         font-family:'Nunito',sans-serif; font-size:14px; font-weight:900;
         cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
@@ -711,32 +712,32 @@
     <!-- MAPA PROSPECTS -->
     <div style="margin:10px 16px 0;">
       <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:6px;">🗺️ MAPA DE PROSPECTS</div>
-      <div id="mapaProsp" style="width:100%; height:220px; border-radius:14px; box-shadow:var(--shadow); overflow:hidden; border:1.5px solid var(--xlight); background:#e8e8e8;"></div>
+      <div id="mapaProsp" style="width:100%; height:220px; border-radius:6px; box-shadow:var(--shadow); overflow:hidden; border:1.5px solid var(--xlight); background:#e8e8e8;"></div>
     </div>
 
     <!-- FILTROS DE PROSPECTS -->
     <div style="padding:10px 16px 0; display:flex; gap:6px; flex-wrap:wrap;">
       <button id="filtroProsp_todos" class="filtro-prosp-btn ativo" onclick="setFiltroProsp('todos')"
-        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1565C0; background:#1565C0; color:#fff; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:6px; border:2px solid #1565C0; background:#1565C0; color:#fff; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
         🌐 TODOS
       </button>
       <button id="filtroProsp_base" class="filtro-prosp-btn" onclick="setFiltroProsp('base')"
-        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1A7A40; background:#fff; color:#1A7A40; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:6px; border:2px solid #1A7A40; background:#fff; color:#1A7A40; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
         🟢 MINHA BASE
       </button>
       <button id="filtroProsp_novos" class="filtro-prosp-btn" onclick="setFiltroProsp('novos')"
-        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1565C0; background:#fff; color:#1565C0; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:6px; border:2px solid #1565C0; background:#fff; color:#1565C0; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
         🔵 NOVOS
       </button>
       <button id="filtroProsp_cnpj" class="filtro-prosp-btn" onclick="setFiltroProsp('cnpj')"
-        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #E65100; background:#fff; color:#E65100; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:6px; border:2px solid #E65100; background:#fff; color:#E65100; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
         🟠 CNPJ
       </button>
     </div>
 
     <!-- ADICIONAR AO ROTEIRO EM LOTE -->
     <div style="padding:8px 16px 0;">
-      <button onclick="abrirPlanejar()" style="width:100%;padding:11px;border-radius:12px;border:2px dashed #1A7A40;background:#F2FBF5;color:#1A7A40;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+      <button onclick="abrirPlanejar()" style="width:100%;padding:11px;border-radius:6px;border:2px dashed #1A7A40;background:#F2FBF5;color:#1A7A40;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         📅 PLANEJAR ROTEIRO (1 A 5 DIAS)
       </button>
     </div>
@@ -851,26 +852,26 @@
     </div>
 
     <div style="display:flex;gap:8px;margin:10px 16px 0">
-      <button onclick="limparRoteiro()" style="flex:1;padding:10px;border-radius:11px;border:none;background:#FFF0F0;color:var(--red);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+      <button onclick="limparRoteiro()" style="flex:1;padding:10px;border-radius:4px;border:none;background:#FFF0F0;color:var(--red);font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         🗑️ Limpar Roteiro
       </button>
-      <button onclick="otimizarRoteiro()" style="flex:1;padding:10px;border-radius:11px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+      <button onclick="otimizarRoteiro()" style="flex:1;padding:10px;border-radius:4px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         ✨ Ordenar por Prioridade
       </button>
     </div>
     <div style="display:flex;gap:8px;margin:8px 16px 0">
-      <button onclick="ordenarPorProximidade()" style="flex:1;padding:11px;border-radius:11px;border:none;background:#E8F1FF;color:#1565C0;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+      <button onclick="ordenarPorProximidade()" style="flex:1;padding:11px;border-radius:4px;border:none;background:#E8F1FF;color:#1565C0;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         📍 Ordenar por Proximidade
       </button>
-      <button onclick="iniciarRota()" style="flex:1;padding:11px;border-radius:11px;border:none;background:#1A7A40;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
+      <button onclick="iniciarRota()" style="flex:1;padding:11px;border-radius:4px;border:none;background:#1A7A40;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">
         🗺️ Iniciar Rota
       </button>
     </div>
 
     <!-- ABAS DOS DIAS DO PLANO -->
     <div id="rotDias" style="display:none;gap:6px;overflow-x:auto;padding:10px 16px 0;"></div>
-    <div id="rotVagas" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#FFF8E1;border:1.5px solid #FFE082;color:#8A6100;font-size:12px;font-weight:800;"></div>
-    <div id="rotReserva" style="display:none;margin:8px 16px 0;padding:8px 12px;border-radius:10px;background:#F2FBF5;color:#1A7A40;font-size:11px;font-weight:800;"></div>
+    <div id="rotVagas" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin:8px 16px 0;padding:10px 12px;border-radius:6px;background:#FFF8E1;border:1.5px solid #FFE082;color:#8A6100;font-size:12px;font-weight:800;"></div>
+    <div id="rotReserva" style="display:none;margin:8px 16px 0;padding:8px 12px;border-radius:4px;background:#F2FBF5;color:#1A7A40;font-size:11px;font-weight:800;"></div>
 
     <div style="padding:10px 16px 0">
       <div class="clist" id="listaRoteiro">
@@ -920,7 +921,7 @@
     <div id="planoDias" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
     <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">VISITAS POR DIA</div>
     <div id="planoVisitas" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
-    <div id="planoPrevia" style="background:var(--bg);border-radius:12px;padding:11px 12px;font-size:12px;font-weight:700;color:var(--dark);line-height:1.6;margin-bottom:14px;"></div>
+    <div id="planoPrevia" style="background:var(--bg);border-radius:6px;padding:11px 12px;font-size:12px;font-weight:700;color:var(--dark);line-height:1.6;margin-bottom:14px;"></div>
     <div class="mactions">
       <button class="mbtn primary" onclick="gerarPlano()">✅ GERAR ROTEIRO</button>
       <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovPlano')">Cancelar</button>
@@ -935,7 +936,7 @@
     <div class="mtitle">➕ COMPLETAR O DIA</div>
     <div class="msub" id="compInfo" style="margin-bottom:10px;"></div>
     <div id="compTipos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
-    <div id="compLista" style="max-height:38vh;overflow-y:auto;border:1.5px solid var(--xlight);border-radius:12px;margin-bottom:12px;"></div>
+    <div id="compLista" style="max-height:38vh;overflow-y:auto;border:1.5px solid var(--xlight);border-radius:6px;margin-bottom:12px;"></div>
     <div class="mactions">
       <button class="mbtn sec" style="grid-column:span 2;" onclick="selecionarMaisProximos()">⚡ ESCOLHER OS MAIS PRÓXIMOS</button>
       <button class="mbtn primary" id="btnCompAdd" onclick="confirmarCompletar()">ADICIONAR</button>
@@ -952,7 +953,7 @@
     <div class="msub" id="cancelNome" style="margin-bottom:12px;"></div>
     <div style="font-size:12px;font-weight:800;color:var(--black);margin-bottom:8px;">Por que está tirando da rota? <span style="color:var(--red)">(obrigatório)</span></div>
     <div id="cancelMotivos" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;"></div>
-    <textarea id="cancelTexto" rows="3" placeholder="Descreva o motivo..." oninput="atualizarBotaoCancelar()" style="display:none;width:100%;padding:10px;border-radius:12px;border:1.5px solid var(--lgray);font-family:'Nunito',sans-serif;font-size:13px;margin-bottom:10px;resize:none;"></textarea>
+    <textarea id="cancelTexto" rows="3" placeholder="Descreva o motivo..." oninput="atualizarBotaoCancelar()" style="display:none;width:100%;padding:10px;border-radius:6px;border:1.5px solid var(--lgray);font-family:'Nunito',sans-serif;font-size:13px;margin-bottom:10px;resize:none;"></textarea>
     <div id="cancelSubInfo" style="font-size:11px;font-weight:800;color:#1A7A40;margin-bottom:12px;"></div>
     <div class="mactions">
       <button class="mbtn danger" id="btnConfirmaCancel" onclick="confirmarCancelamento()" disabled style="grid-column:span 2;opacity:.45;">CONFIRMAR E TROCAR</button>
@@ -976,7 +977,7 @@
       <div class="mitem"><div class="mitem-l">🏷️ Categoria</div><div class="mitem-v" id="pCat"></div></div>
       <div class="mitem"><div class="mitem-l">📍 Distância</div><div class="mitem-v" id="pDist"></div></div>
     </div>
-    <div id="pNaBaseAviso" style="display:none; background:#E0F2E9; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:12px; font-weight:800; color:var(--green);">
+    <div id="pNaBaseAviso" style="display:none; background:#E0F2E9; border-radius:4px; padding:10px 12px; margin-bottom:12px; font-size:12px; font-weight:800; color:var(--green);">
       ✅ Este estabelecimento já está na sua base de clientes!
     </div>
     <div class="mactions">
@@ -1031,10 +1032,10 @@
       <div style="font-size:13px;color:var(--gray);font-weight:700">Escolha o app de navegação</div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-      <button style="background:#E8F4FF;color:#1565C0;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirGoogleMaps()"><span style="font-size:20px">🗺️</span>Google Maps</button>
-      <button style="background:#E8FFF4;color:#1B6B45;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirWaze()"><span style="font-size:20px">🔵</span>Waze</button>
+      <button style="background:#E8F4FF;color:#1565C0;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirGoogleMaps()"><span style="font-size:20px">🗺️</span>Google Maps</button>
+      <button style="background:#E8FFF4;color:#1B6B45;border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:14px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px" onclick="abrirWaze()"><span style="font-size:20px">🔵</span>Waze</button>
     </div>
-    <button style="width:100%;background:var(--xlight);color:var(--dark);border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:13px;border-radius:13px;cursor:pointer" onclick="closeOv('ovGps')">Cancelar</button>
+    <button style="width:100%;background:var(--xlight);color:var(--dark);border:none;font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;padding:13px;border-radius:6px;cursor:pointer" onclick="closeOv('ovGps')">Cancelar</button>
   </div>
 </div>
 
@@ -1047,7 +1048,7 @@
       <div style="font-size:16px;font-weight:900;color:var(--black)" id="userName">Usuário</div>
       <div style="font-size:12px;color:var(--gray);font-weight:700;margin-top:2px" id="userEmail">-</div>
     </div>
-    <button style="width:100%;padding:13px;border-radius:13px;border:none;background:#FFF0F0;color:var(--red);font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onclick="fazerLogout()">
+    <button style="width:100%;padding:13px;border-radius:6px;border:none;background:#FFF0F0;color:var(--red);font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px" onclick="fazerLogout()">
       <svg width="17" height="17" fill="none" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       SAIR DA CONTA
     </button>
@@ -1666,7 +1667,7 @@
     if(roteiroClientes.length > 0 && falta > 0) {
       vagas.style.display = 'flex';
       vagas.innerHTML = `<div>⚠️ Faltam <b>${falta}</b> vaga(s) para completar as ${planoAtual.visitasPorDia} visitas do dia</div>
-        <button onclick="abrirCompletar()" style="flex-shrink:0;padding:8px 12px;border-radius:10px;border:none;background:#8A6100;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">➕ COMPLETAR</button>`;
+        <button onclick="abrirCompletar()" style="flex-shrink:0;padding:8px 12px;border-radius:4px;border:none;background:#8A6100;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">➕ COMPLETAR</button>`;
     } else {
       vagas.style.display = 'none';
     }
@@ -1674,7 +1675,7 @@
       caixa.style.display = 'flex';
       caixa.innerHTML = planoAtual.dias.map((d, i) => {
         const ativo = i === diaAtual;
-        return `<button onclick="mudarDia(${i})" style="flex-shrink:0;padding:8px 14px;border-radius:20px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">Dia ${i+1} · ${d.itens.length}</button>`;
+        return `<button onclick="mudarDia(${i})" style="flex-shrink:0;padding:8px 14px;border-radius:6px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">Dia ${i+1} · ${d.itens.length}</button>`;
       }).join('');
     } else {
       caixa.style.display = 'none';
@@ -1749,15 +1750,15 @@
   function renderPlanejar() {
     const N = montarPool().length;
     const chip = (rotulo, ativo, acao) =>
-      `<button onclick="${acao}" style="padding:9px 16px;border-radius:20px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rotulo}</button>`;
+      `<button onclick="${acao}" style="padding:9px 16px;border-radius:6px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rotulo}</button>`;
     const cont = contarTipos();
     const CORES = { base: ['#1A7A40', '#E0F2E9', '🟢 Base'], novo: ['#1565C0', '#E8F1FF', '🔵 Novos'], cnpj: ['#E65100', '#FFF3E0', '🟠 CNPJ'] };
     const todosLigados = Object.values(planoSel.tipos).every(Boolean);
     document.getElementById('planoTipos').innerHTML =
-      `<button onclick="todosTipos()" style="padding:9px 14px;border-radius:20px;border:2px solid var(--black);background:${todosLigados?'var(--black)':'#fff'};color:${todosLigados?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🔀 Misto</button>` +
+      `<button onclick="todosTipos()" style="padding:9px 14px;border-radius:6px;border:2px solid var(--black);background:${todosLigados?'var(--black)':'#fff'};color:${todosLigados?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🔀 Misto</button>` +
       ['base','novo','cnpj'].map(t => {
         const [cor, fundo, rot] = CORES[t]; const on = planoSel.tipos[t];
-        return `<button onclick="alternarTipo('${t}')" style="padding:9px 14px;border-radius:20px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
+        return `<button onclick="alternarTipo('${t}')" style="padding:9px 14px;border-radius:6px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
       }).join('');
     document.getElementById('planoInfo').textContent = `${N} prospect(s) disponíveis nos tipos escolhidos`;
     document.getElementById('planoDias').innerHTML =
@@ -1849,7 +1850,7 @@
     const CORES = { base: ['#1A7A40', '🟢 Base'], novo: ['#1565C0', '🔵 Novos'], cnpj: ['#E65100', '🟠 CNPJ'] };
     document.getElementById('compTipos').innerHTML = ['base', 'novo', 'cnpj'].map(t => {
       const [cor, rot] = CORES[t]; const on = compTipos[t];
-      return `<button onclick="compAlternarTipo('${t}')" style="padding:8px 12px;border-radius:20px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
+      return `<button onclick="compAlternarTipo('${t}')" style="padding:8px 12px;border-radius:6px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
     }).join('');
     document.getElementById('compInfo').innerHTML =
       `Faltam <b>${vagas}</b> vaga(s). Selecionados: <b>${compSel.size}</b> de ${vagas}`;
@@ -1859,7 +1860,7 @@
           const on = compSel.has(i);
           const km = it._d < 1 ? `${(it._d * 1000).toFixed(0)} m` : `${it._d.toFixed(1)} km`;
           return `<div onclick="alternarComp(${i})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--xlight);cursor:pointer;background:${on?'#F2FBF5':'#fff'};">
-            <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${on?'#1A7A40':'var(--lgray)'};background:${on?'#1A7A40':'#fff'};color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${on?'✓':''}</div>
+            <div style="width:22px;height:22px;border-radius:3px;border:2px solid ${on?'#1A7A40':'var(--lgray)'};background:${on?'#1A7A40':'#fff'};color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${on?'✓':''}</div>
             <div style="flex:1;min-width:0;">
               <div style="font-size:13px;font-weight:800;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${catEmojisProsp[it.categoria]||'🏪'} ${it.nome}</div>
               <div style="margin-top:3px;">${badgeTipo(it)} <span style="font-size:11px;font-weight:700;color:var(--gray);">~${km} do dia</span></div>
@@ -1930,7 +1931,7 @@
   function renderMotivos() {
     document.getElementById('cancelMotivos').innerHTML = MOTIVOS_CANCELAR.map(m => {
       const ativo = cancelMotivo === m;
-      return `<button onclick="escolherMotivo('${m}')" style="padding:9px 13px;border-radius:20px;border:2px solid ${ativo?'var(--red)':'var(--lgray)'};background:${ativo?'#FFF0F0':'#fff'};color:${ativo?'var(--red)':'var(--dark)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${m}</button>`;
+      return `<button onclick="escolherMotivo('${m}')" style="padding:9px 13px;border-radius:6px;border:2px solid ${ativo?'var(--red)':'var(--lgray)'};background:${ativo?'#FFF0F0':'#fff'};color:${ativo?'var(--red)':'var(--dark)'};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${m}</button>`;
     }).join('');
   }
 
