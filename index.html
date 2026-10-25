@@ -1791,85 +1791,76 @@
     }
   };
 
-  // Busca via Foursquare Places API
-  const FSQ_KEY = 'fsq3C4826dodGTajp9q+wXXMUYrdEji35Gfr9RYNDRavR9M=';
-  // Category IDs Foursquare v3 (formato longo)
-  const fsCatIds = {
-    salao: '4bf58dd8d48988d110951735',      // Hair Salon
-    barbearia: '4bf58dd8d48988d111951735',  // Barbershop
-    esmalteria: '4f04aaa62fb6e1c99f3db0ba', // Nail Salon
-    terapia: '4bf58dd8d48988d110951735',    // Hair Salon (terapia capilar)
-    estetica: '4bf58dd8d48988d10f951735',   // Beauty Salon
-    spa: '4bf58dd8d48988d1ed941735'         // Spa & Massage
+  // Busca via Google Places API (New)
+  const GPLACES_KEY = 'AIzaSyD-kJnjjW-nk4DwcWPD3q--0Khky7jBA7g';
+
+  // Tipos Google Places por categoria do app
+  const googleTiposPorCat = {
+    salao: ['hair_salon'],
+    barbearia: ['barber_shop'],
+    esmalteria: ['nail_salon'],
+    terapia: ['hair_salon'],
+    estetica: ['beauty_salon'],
+    spa: ['spa']
   };
 
-  // Termos de busca por categoria
-  const fsQueryTermos = {
-    salao: 'salão de beleza cabeleireiro',
-    barbearia: 'barbearia barber',
-    esmalteria: 'esmalteria manicure nail',
-    terapia: 'terapia capilar cabelo',
-    estetica: 'estética beauty salon',
-    spa: 'spa massagem'
-  };
+  // Detecta categoria do app a partir dos tipos Google retornados
+  function detectarCategoriaGoogle(types) {
+    if(!types) return 'estetica';
+    if(types.includes('barber_shop')) return 'barbearia';
+    if(types.includes('nail_salon')) return 'esmalteria';
+    if(types.includes('spa')) return 'spa';
+    if(types.includes('hair_salon')) return 'salao';
+    if(types.includes('beauty_salon')) return 'estetica';
+    return 'estetica';
+  }
 
-  async function buscarFoursquare(lat, lng, raioM, cats) {
-    const catIds = [...new Set([...cats].map(c => fsCatIds[c]).filter(Boolean))];
+  async function buscarGoogle(lat, lng, raioM, cats) {
+    // Monta lista de tipos Google a partir das categorias selecionadas
+    const tiposSet = new Set();
+    for(const cat of cats) {
+      (googleTiposPorCat[cat] || []).forEach(t => tiposSet.add(t));
+    }
+    const includedTypes = [...tiposSet];
+    if(includedTypes.length === 0) return [];
+
     const todos = [];
     const vistos = new Set();
 
-    // Busca por categoria ID
-    if(catIds.length > 0) {
-      const params = new URLSearchParams({
-        ll: `${lat},${lng}`,
-        radius: Math.min(raioM, 100000),
-        categories: catIds.join(','),
-        limit: 50,
-        fields: 'fsq_id,name,geocodes,categories,location,distance'
-      });
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 20000);
-      try {
-        const r = await fetch(`https://api.foursquare.com/v3/places/nearby?${params}`, {
-          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if(r.ok) {
-          const d = await r.json();
-          for(const el of (d.results||[])) {
-            if(!vistos.has(el.fsq_id)) { vistos.add(el.fsq_id); todos.push(el); }
-          }
+    const body = {
+      locationRestriction: {
+        circle: {
+          center: { latitude: lat, longitude: lng },
+          radius: Math.min(raioM, 50000)
         }
-      } catch(e) { clearTimeout(tid); }
-    }
+      },
+      includedTypes,
+      maxResultCount: 20
+    };
 
-    // Busca por query de texto (fallback e complemento)
-    const queries = [...new Set([...cats].map(c => fsQueryTermos[c]).filter(Boolean))];
-    for(const q of queries) {
-      const params = new URLSearchParams({
-        ll: `${lat},${lng}`,
-        radius: Math.min(raioM, 100000),
-        query: q,
-        limit: 30,
-        fields: 'fsq_id,name,geocodes,categories,location,distance'
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 20000);
+    try {
+      const r = await fetch('https://places.googleapis.com/v1/places:searchNearby', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Goog-Api-Key': GPLACES_KEY,
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.types'
+        },
+        body: JSON.stringify(body),
+        signal: ctrl.signal
       });
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 15000);
-      try {
-        const r = await fetch(`https://api.foursquare.com/v3/places/nearby?${params}`, {
-          headers: { 'Authorization': FSQ_KEY, 'Accept': 'application/json' },
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if(r.ok) {
-          const d = await r.json();
-          for(const el of (d.results||[])) {
-            if(!vistos.has(el.fsq_id)) { vistos.add(el.fsq_id); todos.push(el); }
-          }
+      clearTimeout(tid);
+      if(r.ok) {
+        const d = await r.json();
+        for(const pl of (d.places || [])) {
+          if(!vistos.has(pl.id)) { vistos.add(pl.id); todos.push(pl); }
         }
-      } catch(e) { clearTimeout(tid); }
-    }
+      } else {
+        console.error('Google Places erro:', r.status, await r.text());
+      }
+    } catch(e) { clearTimeout(tid); console.error('Google Places fetch error:', e); }
 
     return todos;
   }
@@ -1909,7 +1900,7 @@
     const status = document.getElementById('prospStatus');
     btn.disabled = true;
     btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px;display:inline-block;border-radius:50%;border-width:2px;border-style:solid;animation:spin .7s linear infinite"></div> Buscando...';
-    status.textContent = 'Consultando Foursquare...';
+    status.textContent = 'Consultando Google Places...';
 
     inicializarMapaProsp();
     marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
@@ -1923,31 +1914,25 @@
     mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
 
     try {
-      status.textContent = `Buscando em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'} via Foursquare...`;
+      status.textContent = `Buscando em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'} via Google Places...`;
 
-      const resultados = await buscarFoursquare(minhaLat, minhaLng, raioProspM, catsSelecionadas);
+      const resultados = await buscarGoogle(minhaLat, minhaLng, raioProspM, catsSelecionadas);
 
       const vistos = new Set();
       const prospects = [];
       for(const el of resultados) {
-        const lat = el.geocodes?.main?.latitude;
-        const lng = el.geocodes?.main?.longitude;
+        const lat = el.location?.latitude;
+        const lng = el.location?.longitude;
         if(!lat || !lng) continue;
-        const nome = el.name || 'Sem nome';
+        const nome = el.displayName?.text || 'Sem nome';
         const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
         if(vistos.has(chave)) continue;
         vistos.add(chave);
-        // Detecta categoria pelo ID Foursquare
-        const catId = el.categories?.[0]?.id?.toString() || '';
-        let cat = 'estetica';
-        if(catId === '11099') cat = catsSelecionadas.has('terapia') && !catsSelecionadas.has('salao') ? 'terapia' : 'salao';
-        else if(catId === '11100') cat = 'barbearia';
-        else if(catId === '11103') cat = 'esmalteria';
-        else if(catId === '11098') cat = 'estetica';
-        else if(catId === '12061') cat = 'spa';
+        // Detecta categoria pelos tipos Google
+        const cat = detectarCategoriaGoogle(el.types || []);
         const naBase = jaEstaNaBase(nome, lat, lng);
-        const dist = el.distance ? el.distance/1000 : calcDistancia(minhaLat, minhaLng, lat, lng);
-        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.fsq_id||chave });
+        const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
+        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave });
       }
 
       prospects.sort((a,b) => a.dist - b.dist);
