@@ -913,6 +913,8 @@
     <div class="mhandle"></div>
     <div class="mtitle">📅 PLANEJAR ROTEIRO</div>
     <div class="msub" id="planoInfo" style="margin-bottom:14px;"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">TIPO DE VISITA (PODE MARCAR VÁRIOS)</div>
+    <div id="planoTipos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
     <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">QUANTOS DIAS?</div>
     <div id="planoDias" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;"></div>
     <div style="font-size:11px;font-weight:800;color:var(--gray);letter-spacing:.8px;margin-bottom:6px;">VISITAS POR DIA</div>
@@ -1441,7 +1443,7 @@
       closeOv('ovCliente');
       return;
     }
-    roteiroClientes.push({...clienteSelecionado});
+    roteiroClientes.push({...clienteSelecionado, tipo: 'base'});
     renderRoteiro();
     atualizarStats();
     renderClientes(todosClientes); // atualiza badge "Roteiro" na lista
@@ -1512,7 +1514,7 @@
   // ══════════════════════════════════════════════
   let salvarPlanoTimer = null;
   let avisouPlanoNuvem = false;
-  let planoSel = { dias: 1, visitas: 10 };
+  let planoSel = { dias: 1, visitas: 10, tipos: { base: true, novo: true, cnpj: true } };
   let cancelPendenteId = null;
   let cancelMotivo = '';
   const MOTIVOS_CANCELAR = ['Fechado','Já tem fornecedor','Não tem interesse','Ninguém atende','Endereço errado','Muito longe','Outro'];
@@ -1530,22 +1532,26 @@
       logradouro: c.logradouro || '', numero: c.numero || '', bairro: c.bairro || '',
       cidade: c.cidade || '', uf: c.uf || '',
       lat: co ? co.lat : null, lng: co ? co.lng : null,
-      _isProspect: !!c._isProspect, _prospId: c._prospId || ''
+      _isProspect: !!c._isProspect, _prospId: c._prospId || '',
+      tipo: c.tipo || (c._isProspect ? 'novo' : 'base')
     };
   }
 
   // Converte um prospect da busca em item de roteiro
+  function tipoDe(p) { return p.naBase ? 'base' : (p._cnpj ? 'cnpj' : 'novo'); }
+
   function prospParaItem(p) {
     if(p.naBase && p.naBase.id) {
       const co = coordsRoteiro(p.naBase) || { lat: p.lat, lng: p.lng };
-      return itemSlim({ ...p.naBase, lat: co.lat, lng: co.lng });
+      return itemSlim({ ...p.naBase, lat: co.lat, lng: co.lng, tipo: 'base' });
     }
     const chave = p.osmId || `${p.lat.toFixed(5)}|${p.lng.toFixed(5)}`;
     return itemSlim({
       id: 'prosp_' + chave, _prospId: chave, nome: p.nome, categoria: p.cat,
       prioridade: 'Média',
       logradouro: p.tags?.['addr:street'] || '', numero: p.tags?.['addr:housenumber'] || '',
-      cidade: p.tags?.['addr:city'] || '', lat: p.lat, lng: p.lng, _isProspect: true
+      cidade: p.tags?.['addr:city'] || '', lat: p.lat, lng: p.lng, _isProspect: true,
+      tipo: tipoDe(p)
     });
   }
 
@@ -1675,21 +1681,13 @@
     return true;
   }
 
-  // Prospects que estão visíveis agora (respeita o filtro TODOS/BASE/NOVOS/CNPJ)
-  function listaProspFiltrada() {
-    let lista = prospectsTodos;
-    if(filtroProsp === 'base') lista = lista.filter(p => p.naBase);
-    else if(filtroProsp === 'novos') lista = lista.filter(p => !p.naBase);
-    else if(filtroProsp === 'cnpj') lista = lista.filter(p => p._cnpj);
-    return lista;
-  }
-
-  // Lista candidata ao plano: sem repetidos e sem os que já foram cancelados no plano atual
+  // Lista candidata ao plano: só os tipos escolhidos, sem repetidos e sem os já cancelados
   function montarPool() {
     const excluir = new Set((planoAtual?.cancelados || []).map(x => x.id));
     const vistos = new Set();
     const pool = [];
-    for(const p of listaProspFiltrada()) {
+    for(const p of prospectsTodos) {
+      if(!planoSel.tipos[tipoDe(p)]) continue;
       const it = prospParaItem(p);
       if(excluir.has(it.id) || vistos.has(it.id)) continue;
       vistos.add(it.id);
@@ -1698,20 +1696,44 @@
     return pool;
   }
 
+  function contarTipos() {
+    const n = { base: 0, novo: 0, cnpj: 0 };
+    for(const p of prospectsTodos) n[tipoDe(p)]++;
+    return n;
+  }
+
   // ── Janela "Planejar roteiro"
   window.abrirPlanejar = () => {
-    if(listaProspFiltrada().length === 0) { showToast('Faça uma busca primeiro'); return; }
+    if(prospectsTodos.length === 0) { showToast('Faça uma busca primeiro'); return; }
     renderPlanejar();
     document.getElementById('ovPlano').classList.add('open');
   };
 
   window.setPlanoSel = (campo, valor) => { planoSel[campo] = valor; renderPlanejar(); };
 
+  // Liga/desliga um tipo (sempre fica pelo menos um ligado)
+  window.alternarTipo = (t) => {
+    const ligados = Object.values(planoSel.tipos).filter(Boolean).length;
+    if(planoSel.tipos[t] && ligados === 1) { showToast('Deixe pelo menos um tipo marcado'); return; }
+    planoSel.tipos[t] = !planoSel.tipos[t];
+    renderPlanejar();
+  };
+  window.todosTipos = () => { planoSel.tipos = { base: true, novo: true, cnpj: true }; renderPlanejar(); };
+
   function renderPlanejar() {
     const N = montarPool().length;
     const chip = (rotulo, ativo, acao) =>
       `<button onclick="${acao}" style="padding:9px 16px;border-radius:20px;border:2px solid var(--black);background:${ativo?'var(--black)':'#fff'};color:${ativo?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rotulo}</button>`;
-    document.getElementById('planoInfo').textContent = `${N} prospect(s) na lista atual`;
+    const cont = contarTipos();
+    const CORES = { base: ['#1A7A40', '#E0F2E9', '🟢 Base'], novo: ['#1565C0', '#E8F1FF', '🔵 Novos'], cnpj: ['#E65100', '#FFF3E0', '🟠 CNPJ'] };
+    const todosLigados = Object.values(planoSel.tipos).every(Boolean);
+    document.getElementById('planoTipos').innerHTML =
+      `<button onclick="todosTipos()" style="padding:9px 14px;border-radius:20px;border:2px solid var(--black);background:${todosLigados?'var(--black)':'#fff'};color:${todosLigados?'#fff':'var(--black)'};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">🔀 Misto</button>` +
+      ['base','novo','cnpj'].map(t => {
+        const [cor, fundo, rot] = CORES[t]; const on = planoSel.tipos[t];
+        return `<button onclick="alternarTipo('${t}')" style="padding:9px 14px;border-radius:20px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:13px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
+      }).join('');
+    document.getElementById('planoInfo').textContent = `${N} prospect(s) disponíveis nos tipos escolhidos`;
     document.getElementById('planoDias').innerHTML =
       [[1,'1 dia'],[2,'2 dias'],[3,'3 dias'],[4,'4 dias'],[5,'Semana (5)']]
         .map(([v, r]) => chip(r, planoSel.dias === v, `setPlanoSel('dias',${v})`)).join('');
@@ -1860,6 +1882,12 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   }
 
+  function badgeTipo(c) {
+    const t = c.tipo || (c._isProspect ? 'novo' : 'base');
+    const rot = t === 'base' ? '✅ Base' : t === 'cnpj' ? '🟠 CNPJ' : '🔵 Novo';
+    return `<span class="prosp-badge ${t}">${rot}</span>`;
+  }
+
   function renderRoteiro() {
     if(roteiroClientes.length > 0 && !planoAtual) planoAtual = novoPlano();
     if(planoAtual) {
@@ -1917,6 +1945,7 @@
           <div class="rot-name">${catEmojis[c.categoria]||'🏪'} ${c.nome}</div>
           <div class="rot-addr">${c.logradouro?c.logradouro+', '+c.numero+' — '+c.bairro:c.cidade||'Endereço não informado'}</div>
           <div class="rot-meta">
+            ${badgeTipo(c)}
             <span class="tag ${c.prioridade==='Alta'?'prio':c.prioridade==='Média'?'pend':'done'}">${c.prioridade||'—'}</span>
             ${distTxt}
           </div>
