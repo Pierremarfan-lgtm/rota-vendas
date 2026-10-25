@@ -2220,11 +2220,26 @@
           // Text Search usa vistos separado — não descarta por já estar no Google Nearby
           const categoriasAtivas = [...catsSelecionadas];
           const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, nomeMunicipio, ufSigla, categoriasAtivas);
+          // Palavras no nome que indicam categoria específica (para filtro por nome)
+          const PALAVRAS_CAT = {
+            barbearia: ['barber','barbearia','barbeiro','cabelo masculino'],
+            esmalteria: ['esmalte','esmalteria','nail','unhas','manicure','pedicure'],
+            estetica:   ['estética','estetica','estetic','depilação','depilacao','sobrancelha','micropigment','lash','cílios','cilos'],
+            spa:        [' spa ','massagem','relaxamento','zen'],
+            terapia:    ['terapia capilar','spa capilar','capilar'],
+            salao:      ['salão','salao','cabelereiro','cabeleireiro','coiffeur','hair','studio','espaço beleza','beleza']
+          };
           const vistosNome = new Set(prospects.map(p => p.nome?.toLowerCase().trim()));
           for(const c of cnpjResults) {
             const nomeKey = c.nome?.toLowerCase().trim();
             if(vistosNome.has(nomeKey)) continue;
-            // Text Search já foi feito com termos da categoria certa — não filtra por cat detectada
+            // Verifica se o nome do estabelecimento bate com alguma categoria NÃO selecionada
+            let catNome = null;
+            for(const [cat, palavras] of Object.entries(PALAVRAS_CAT)) {
+              if(palavras.some(p => nomeKey.includes(p))) { catNome = cat; break; }
+            }
+            // Se o nome indica categoria que não está selecionada, descarta
+            if(catNome && !catsSelecionadas.has(catNome)) continue;
             vistosNome.add(nomeKey);
             c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
             prospects.push(c);
