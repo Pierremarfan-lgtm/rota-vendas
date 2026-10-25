@@ -244,6 +244,9 @@
   .prosp-badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:5px; }
   .prosp-badge.novo { background:#E3F0FF; color:#1565C0; }
   .prosp-badge.base { background:#E0F2E9; color:var(--green); }
+  .prosp-badge.cnpj { background:#FFF3E0; color:#E65100; }
+  .filtro-prosp-btn.ativo { opacity:1 !important; filter:none !important; }
+  .filtro-prosp-btn:not(.ativo) { opacity:0.55; }
   .search-wrap input { flex:1; border:none; outline:none; background:none; font-family:'Nunito',sans-serif; font-size:14px; font-weight:600; color:var(--dark); }
   .search-wrap input::placeholder { color:var(--lgray); }
   .search-icon { width:34px; height:34px; border-radius:9px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
@@ -724,8 +727,28 @@
       <div id="mapaProsp" style="width:100%; height:220px; border-radius:14px; box-shadow:var(--shadow); overflow:hidden; border:1.5px solid var(--xlight); background:#e8e8e8;"></div>
     </div>
 
+    <!-- FILTROS DE PROSPECTS -->
+    <div style="padding:10px 16px 0; display:flex; gap:6px; flex-wrap:wrap;">
+      <button id="filtroProsp_todos" class="filtro-prosp-btn ativo" onclick="setFiltroProsp('todos')"
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1565C0; background:#1565C0; color:#fff; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        🌐 TODOS
+      </button>
+      <button id="filtroProsp_base" class="filtro-prosp-btn" onclick="setFiltroProsp('base')"
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1A7A40; background:#fff; color:#1A7A40; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        🟢 MINHA BASE
+      </button>
+      <button id="filtroProsp_novos" class="filtro-prosp-btn" onclick="setFiltroProsp('novos')"
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #1565C0; background:#fff; color:#1565C0; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        🔵 NOVOS
+      </button>
+      <button id="filtroProsp_cnpj" class="filtro-prosp-btn" onclick="setFiltroProsp('cnpj')"
+        style="flex:1; min-width:70px; padding:7px 4px; border-radius:20px; border:2px solid #E65100; background:#fff; color:#E65100; font-size:11px; font-weight:800; cursor:pointer; transition:.2s;">
+        🟠 CNPJ
+      </button>
+    </div>
+
     <!-- LISTA DE PROSPECTS -->
-    <div style="padding:10px 16px 0;">
+    <div style="padding:8px 16px 0;">
       <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; letter-spacing:1.5px; color:var(--black); margin-bottom:6px;" id="prospTitulo">RESULTADOS</div>
       <div id="listaProspects">
         <div class="empty">
@@ -1815,29 +1838,55 @@
     return 'estetica';
   }
 
-  async function buscarGoogle(lat, lng, raioM, cats) {
-    // Monta lista de tipos Google a partir das categorias selecionadas
-    const tiposSet = new Set();
-    for(const cat of cats) {
-      (googleTiposPorCat[cat] || []).forEach(t => tiposSet.add(t));
+  // Gera pontos numa grade hexagonal para cobrir o raio completo com círculos menores
+  function gerarPontosCobertura(latC, lngC, raioTotalM) {
+    // Cada subcírculo tem raio fixo de 2500m (≤50 resultados possíveis por busca)
+    const raioSub = 2500;
+    const pontos = [{ lat: latC, lng: lngC }]; // centro sempre incluso
+
+    // Quantas "camadas" de anéis precisamos?
+    // Espaçamento entre centros = raioSub * 1.5 para garantir sobreposição
+    const passo = raioSub * 1.5;
+    const camadas = Math.ceil(raioTotalM / passo);
+
+    // Graus por metro (aproximado)
+    const mPorGrauLat = 111320;
+    const mPorGrauLng = 111320 * Math.cos(latC * Math.PI / 180);
+
+    for(let anel = 1; anel <= camadas; anel++) {
+      // Grade hexagonal: anel externo tem 6*anel pontos
+      const numPontos = 6 * anel;
+      for(let i = 0; i < numPontos; i++) {
+        const angulo = (2 * Math.PI * i) / numPontos;
+        const distM = passo * anel;
+        const dLat = (distM * Math.cos(angulo)) / mPorGrauLat;
+        const dLng = (distM * Math.sin(angulo)) / mPorGrauLng;
+        const pLat = latC + dLat;
+        const pLng = lngC + dLng;
+        // Só inclui ponto se o subcírculo toca a área de busca
+        const distCentroM = Math.sqrt(
+          Math.pow(dLat * mPorGrauLat, 2) + Math.pow(dLng * mPorGrauLng, 2)
+        );
+        if(distCentroM - raioSub < raioTotalM) {
+          pontos.push({ lat: pLat, lng: pLng });
+        }
+      }
     }
-    const includedTypes = [...tiposSet];
-    if(includedTypes.length === 0) return [];
+    return pontos;
+  }
 
-    const todos = [];
-    const vistos = new Set();
-
+  // Faz uma única requisição ao Google Places
+  async function buscarGoogleUmPonto(lat, lng, raioSub, includedTypes) {
     const body = {
       locationRestriction: {
         circle: {
           center: { latitude: lat, longitude: lng },
-          radius: Math.min(raioM, 50000)
+          radius: Math.min(raioSub, 50000)
         }
       },
       includedTypes,
       maxResultCount: 20
     };
-
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 20000);
     try {
@@ -1854,15 +1903,141 @@
       clearTimeout(tid);
       if(r.ok) {
         const d = await r.json();
-        for(const pl of (d.places || [])) {
-          if(!vistos.has(pl.id)) { vistos.add(pl.id); todos.push(pl); }
-        }
+        return d.places || [];
       } else {
         console.error('Google Places erro:', r.status, await r.text());
       }
     } catch(e) { clearTimeout(tid); console.error('Google Places fetch error:', e); }
+    return [];
+  }
 
+  async function buscarGoogle(lat, lng, cats) {
+    // Raio fixo de 3km com grade de 7 zonas
+    const RAIO_TOTAL = 3000;
+    const tiposSet = new Set();
+    for(const cat of cats) {
+      (googleTiposPorCat[cat] || []).forEach(t => tiposSet.add(t));
+    }
+    const includedTypes = [...tiposSet];
+    if(includedTypes.length === 0) return [];
+
+    const pontos = gerarPontosCobertura(lat, lng, RAIO_TOTAL);
+    const raioSub = 2500;
+    const statusEl = document.getElementById('prospStatus');
+    const todos = [];
+    const vistos = new Set();
+    const LOTE = 5;
+
+    for(let i = 0; i < pontos.length; i += LOTE) {
+      const lote = pontos.slice(i, i + LOTE);
+      if(statusEl) statusEl.textContent = `🗺️ Varrendo área... ${Math.min(i + LOTE, pontos.length)}/${pontos.length} zonas (Google)`;
+      const resultados = await Promise.all(
+        lote.map(p => buscarGoogleUmPonto(p.lat, p.lng, raioSub, includedTypes))
+      );
+      for(const lista of resultados) {
+        for(const pl of lista) {
+          if(!vistos.has(pl.id)) {
+            vistos.add(pl.id);
+            const plLat = pl.location?.latitude;
+            const plLng = pl.location?.longitude;
+            if(plLat && plLng) {
+              const distM = calcDistancia(lat, lng, plLat, plLng) * 1000;
+              if(distM <= RAIO_TOTAL) todos.push(pl);
+            }
+          }
+        }
+      }
+    }
     return todos;
+  }
+
+  // CNAEs do setor de beleza para busca Receita Federal
+  const CNAES_BELEZA = ['9602501','9602502','9602503'];
+  // 9602501 = Cabeleireiros, manicure e pedicure
+  // 9602502 = Atividades de estética e outros serviços de cuidados com a beleza
+  // 9602503 = Atividades de maquiagem (barbearia inclusa no 9602501)
+
+  function categoriaDeSegmento(cnae, razao) {
+    const r = (razao||'').toLowerCase();
+    if(cnae === '9602502') return 'barbearia'; // barbearias usam esse CNAE
+    if(r.includes('barber') || r.includes('barbearia')) return 'barbearia';
+    if(r.includes('esmalte') || r.includes('manicure') || r.includes('unhas')) return 'esmalteria';
+    if(r.includes('spa') || r.includes('massagem')) return 'spa';
+    if(r.includes('estética') || r.includes('estetica') || r.includes('beleza')) return 'estetica';
+    return 'salao';
+  }
+
+  async function buscarCNPJ(lat, lng, municipioIbge) {
+    const statusEl = document.getElementById('prospStatus');
+    if(statusEl) statusEl.textContent = '📋 Buscando CNPJs do setor (Receita Federal)...';
+
+    const resultados = [];
+    const vistos = new Set();
+
+    for(const cnae of CNAES_BELEZA) {
+      try {
+        // API pública Brasil.io — dados da Receita Federal
+        const url = `https://brasilapi.com.br/api/cnpj/v1/`;
+        // Usa a API publica CNPJ.ws por município e CNAE
+        const r = await fetch(
+          `https://publica.cnpj.ws/cnpj/pesquisa?municipio=${municipioIbge}&cnae=${cnae}&situacao=A&registros=100`,
+          { headers: { 'Accept': 'application/json' } }
+        );
+        if(r.ok) {
+          const d = await r.json();
+          for(const emp of (d.data || d.cnpjs || [])) {
+            const cnpj = emp.cnpj || emp.ni;
+            if(cnpj && !vistos.has(cnpj)) {
+              vistos.add(cnpj);
+              resultados.push({ ...emp, _cnae: cnae });
+            }
+          }
+        }
+      } catch(e) { /* silencioso */ }
+    }
+
+    // Geocodifica endereços via Nominatim (gratuito) — lote de 3 por vez
+    const comCoords = [];
+    const LOTE_GEO = 3;
+    for(let i = 0; i < resultados.length; i += LOTE_GEO) {
+      const lote = resultados.slice(i, i + LOTE_GEO);
+      if(statusEl) statusEl.textContent = `📍 Geocodificando endereços... ${Math.min(i+LOTE_GEO, resultados.length)}/${resultados.length}`;
+      await Promise.all(lote.map(async emp => {
+        try {
+          const logradouro = emp.logradouro || emp.endereco?.logradouro || '';
+          const numero = emp.numero || emp.endereco?.numero || '';
+          const municipio = emp.municipio || emp.endereco?.municipio || '';
+          const uf = emp.uf || emp.endereco?.uf || '';
+          if(!logradouro) return;
+          const q = encodeURIComponent(`${logradouro} ${numero}, ${municipio}, ${uf}, Brasil`);
+          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
+            headers: { 'Accept-Language': 'pt-BR' }
+          });
+          if(gr.ok) {
+            const gd = await gr.json();
+            if(gd[0]) {
+              const eLat = parseFloat(gd[0].lat);
+              const eLng = parseFloat(gd[0].lon);
+              const distM = calcDistancia(lat, lng, eLat, eLng) * 1000;
+              if(distM <= 3000) {
+                comCoords.push({
+                  _cnpj: true,
+                  lat: eLat, lng: eLng,
+                  nome: emp.nome_fantasia || emp.razao_social || 'Estabelecimento',
+                  cat: categoriaDeSegmento(emp._cnae, emp.razao_social),
+                  cnpj: emp.cnpj || emp.ni,
+                  endereco: `${logradouro}${numero?', '+numero:''}`,
+                  dist: distM / 1000
+                });
+              }
+            }
+          }
+        } catch(e) { /* silencioso */ }
+        await new Promise(r => setTimeout(r, 300)); // respeita limite Nominatim
+      }));
+    }
+
+    return comCoords;
   }
 
   // Detecta categoria do resultado OSM
@@ -1892,6 +2067,56 @@
     }) || null;
   }
 
+  // Filtro ativo de prospects: 'todos' | 'base' | 'novos' | 'cnpj'
+  let filtroProsp = 'todos';
+  let prospectsTodos = []; // guarda todos para re-filtrar sem nova busca
+
+  window.setFiltroProsp = (f) => {
+    filtroProsp = f;
+    document.querySelectorAll('.filtro-prosp-btn').forEach(b => b.classList.remove('ativo'));
+    document.getElementById('filtroProsp_'+f)?.classList.add('ativo');
+    aplicarFiltroProsp();
+  };
+
+  function aplicarFiltroProsp() {
+    let lista = prospectsTodos;
+    if(filtroProsp === 'base') lista = lista.filter(p => p.naBase);
+    else if(filtroProsp === 'novos') lista = lista.filter(p => !p.naBase);
+    else if(filtroProsp === 'cnpj') lista = lista.filter(p => p._cnpj);
+
+    // Atualiza marcadores no mapa
+    marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
+    marcadoresProsp = [];
+    for(const p of lista) {
+      let cor = '#1565C0'; // azul = novo do Google
+      if(p.naBase) cor = '#1A7A40'; // verde = na base
+      else if(p._cnpj) cor = '#E65100'; // laranja = CNPJ Receita
+
+      const icone = L.divIcon({
+        className:'',
+        html:`<div style="width:26px;height:32px;">
+          <div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+            background:${cor};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
+        </div>`,
+        iconSize:[26,32], iconAnchor:[13,32], popupAnchor:[0,-34]
+      });
+      const popup = `<b>${catEmojisProsp[p.cat]||'🏪'} ${p.nome}</b>`
+        + (p.naBase ? '<br><span style="color:green;font-size:11px">✅ Na sua base</span>' : '')
+        + (p._cnpj ? `<br><span style="color:#E65100;font-size:11px">📋 CNPJ: ${p.cnpj}</span>` : '');
+      const m = L.marker([p.lat, p.lng], { icon:icone })
+        .addTo(mapaProsp).bindPopup(popup);
+      m.on('click', () => abrirProspect(p));
+      marcadoresProsp.push(m);
+    }
+    if(minhaLat) {
+      const eu = L.marker([minhaLat,minhaLng],{icon:criarIconeEu(),zIndexOffset:1000})
+        .addTo(mapaProsp).bindPopup('<b>📍 Você</b>');
+      marcadoresProsp.push(eu);
+    }
+    renderProspects(lista);
+    document.getElementById('prospTitulo').textContent = `${lista.length} ESTABELECIMENTOS`;
+  }
+
   window.buscarProspects = async () => {
     if(!minhaLat) { showToast('📍 GPS necessário. Aguarde ou recarregue.'); return; }
     if(catsSelecionadas.size === 0) { showToast('⚠️ Selecione ao menos uma categoria'); return; }
@@ -1900,7 +2125,7 @@
     const status = document.getElementById('prospStatus');
     btn.disabled = true;
     btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px;display:inline-block;border-radius:50%;border-width:2px;border-style:solid;animation:spin .7s linear infinite"></div> Buscando...';
-    status.textContent = 'Consultando Google Places...';
+    status.textContent = 'Iniciando busca...';
 
     inicializarMapaProsp();
     marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
@@ -1908,19 +2133,18 @@
     if(circuloProsp) mapaProsp.removeLayer(circuloProsp);
 
     circuloProsp = L.circle([minhaLat, minhaLng], {
-      radius: raioProspM, color:'#111', weight:2,
+      radius: 3000, color:'#111', weight:2,
       fillColor:'#111', fillOpacity:0.04, dashArray:'6,6'
     }).addTo(mapaProsp);
     mapaProsp.fitBounds(circuloProsp.getBounds(), { padding:[20,20] });
 
     try {
-      status.textContent = `Buscando em ${raioProspM>=1000?(raioProspM/1000).toFixed(1)+'km':raioProspM+'m'} via Google Places...`;
-
-      const resultados = await buscarGoogle(minhaLat, minhaLng, raioProspM, catsSelecionadas);
+      // 1) Busca Google Places (raio fixo 3km, grade 7 zonas)
+      const resultadosGoogle = await buscarGoogle(minhaLat, minhaLng, catsSelecionadas);
 
       const vistos = new Set();
       const prospects = [];
-      for(const el of resultados) {
+      for(const el of resultadosGoogle) {
         const lat = el.location?.latitude;
         const lng = el.location?.longitude;
         if(!lat || !lng) continue;
@@ -1928,45 +2152,51 @@
         const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
         if(vistos.has(chave)) continue;
         vistos.add(chave);
-        // Detecta categoria pelos tipos Google
         const cat = detectarCategoriaGoogle(el.types || []);
         const naBase = jaEstaNaBase(nome, lat, lng);
         const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
-        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave });
+        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave, _cnpj: false });
       }
+
+      // 2) Busca CNPJ Receita Federal (complementa com estabelecimentos não no Google)
+      status.textContent = '📋 Buscando CNPJs (Receita Federal)...';
+      try {
+        // Descobre código IBGE do município via geolocalização reversa
+        const nomUrl = `https://nominatim.openstreetmap.org/reverse?lat=${minhaLat}&lon=${minhaLng}&format=json`;
+        const nomR = await fetch(nomUrl, { headers:{'Accept-Language':'pt-BR'} });
+        let ibgeCod = null;
+        if(nomR.ok) {
+          const nomD = await nomR.json();
+          // Tenta extrair código IBGE do campo extra do Nominatim
+          ibgeCod = nomD.address?.['ref:IBGE'] || nomD.extratags?.['IBGE:GEOCODIGO'] || null;
+        }
+        if(ibgeCod) {
+          const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, ibgeCod);
+          for(const c of cnpjResults) {
+            const chave = `${c.lat.toFixed(4)}|${c.lng.toFixed(4)}`;
+            if(!vistos.has(chave)) {
+              vistos.add(chave);
+              c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
+              prospects.push(c);
+            }
+          }
+        }
+      } catch(e) { console.warn('CNPJ fetch ignorado:', e); }
 
       prospects.sort((a,b) => a.dist - b.dist);
+      prospectsTodos = prospects;
+      filtroProsp = 'todos';
+      document.querySelectorAll('.filtro-prosp-btn').forEach(b => b.classList.remove('ativo'));
+      document.getElementById('filtroProsp_todos')?.classList.add('ativo');
 
-      for(const p of prospects) {
-        const cor = p.naBase ? '#1A7A40' : '#1565C0';
-        const icone = L.divIcon({
-          className:'',
-          html:`<div style="width:26px;height:32px;">
-            <div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-              background:${cor};border:2.5px solid white;box-shadow:0 2px 8px rgba(0,0,0,.4);"></div>
-          </div>`,
-          iconSize:[26,32], iconAnchor:[13,32], popupAnchor:[0,-34]
-        });
-        const m = L.marker([p.lat, p.lng], { icon:icone })
-          .addTo(mapaProsp)
-          .bindPopup(`<b>${catEmojisProsp[p.cat]||'🏪'} ${p.nome}</b>${p.naBase?'<br><span style="color:green;font-size:11px">✅ Na sua base</span>':''}`);
-        m.on('click', () => abrirProspect(p));
-        marcadoresProsp.push(m);
-      }
+      aplicarFiltroProsp();
 
-      if(minhaLat) {
-        const eu = L.marker([minhaLat,minhaLng],{icon:criarIconeEu(),zIndexOffset:1000})
-          .addTo(mapaProsp).bindPopup('<b>📍 Você</b>');
-        marcadoresProsp.push(eu);
-      }
-
-      renderProspects(prospects);
       const novos = prospects.filter(p=>!p.naBase).length;
       const naBase = prospects.filter(p=>p.naBase).length;
+      const comCnpj = prospects.filter(p=>p._cnpj).length;
       status.textContent = prospects.length > 0
-        ? `${prospects.length} encontrado(s) • ${novos} novo(s) • ${naBase} já na base`
-        : '🔍 Nenhum resultado. Tente aumentar o raio ou outra categoria.';
-      document.getElementById('prospTitulo').textContent = `${prospects.length} ESTABELECIMENTOS`;
+        ? `${prospects.length} encontrado(s) • ${novos} novo(s) • ${naBase} na base • ${comCnpj} com CNPJ`
+        : '🔍 Nenhum resultado neste raio.';
 
     } catch(e) {
       console.error(e);
@@ -1991,7 +2221,7 @@
           <div style="font-size:14px; font-weight:800; color:var(--black); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${p.nome}</div>
           <div style="font-size:11px; color:var(--gray); margin-top:2px;">${catNomes[p.cat]||p.cat}</div>
           <div style="display:flex; gap:5px; margin-top:4px; flex-wrap:wrap;">
-            <span class="prosp-badge ${p.naBase?'base':'novo'}">${p.naBase?'✅ Na base':'🔵 Prospect'}</span>
+            <span class="prosp-badge ${p.naBase?'base':p._cnpj?'cnpj':'novo'}">${p.naBase?'✅ Na base':p._cnpj?'🟠 CNPJ':'🔵 Prospect'}</span>
             <span class="tag dist">~${p.dist<1?(p.dist*1000).toFixed(0)+'m':p.dist.toFixed(1)+'km'}</span>
           </div>
         </div>
