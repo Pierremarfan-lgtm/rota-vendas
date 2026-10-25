@@ -2111,7 +2111,19 @@
     const status = document.getElementById('prospStatus');
     btn.disabled = true;
     btn.innerHTML = '<div class="spin" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;width:16px;height:16px;display:inline-block;border-radius:50%;border-width:2px;border-style:solid;animation:spin .7s linear infinite"></div> Buscando...';
-    status.textContent = 'Iniciando busca...';
+    status.textContent = 'Preparando base de clientes...';
+
+    // Garante que todos os clientes da base tenham coordenadas antes de cruzar
+    if(todosClientes.length > 0) {
+      const semCoords = todosClientes.filter(c => !c.lat && !c.lng && !geocodeCache[c.id]);
+      if(semCoords.length > 0) {
+        status.textContent = `📍 Localizando ${semCoords.length} cliente(s) da base...`;
+        for(const c of semCoords) {
+          try { await geocodificarEndereco(c); } catch(e) {}
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+    }
 
     inicializarMapaProsp();
     marcadoresProsp.forEach(m => mapaProsp.removeLayer(m));
