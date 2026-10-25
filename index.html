@@ -2193,6 +2193,8 @@
         if(vistos.has(chave)) continue;
         vistos.add(chave);
         const cat = detectarCategoriaGoogle(el.types || []);
+        // Filtra: só inclui se a categoria detectada está entre as selecionadas
+        if(!catsSelecionadas.has(cat)) continue;
         const naBase = jaEstaNaBase(nome, lat, lng);
         const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
         prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave, _cnpj: false });
@@ -2221,8 +2223,9 @@
           const vistosNome = new Set(prospects.map(p => p.nome?.toLowerCase().trim()));
           for(const c of cnpjResults) {
             const nomeKey = c.nome?.toLowerCase().trim();
-            // Descarta só se o NOME já está na lista (evita duplicata real)
             if(vistosNome.has(nomeKey)) continue;
+            // Filtra pela categoria selecionada
+            if(!catsSelecionadas.has(c.cat)) continue;
             vistosNome.add(nomeKey);
             c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
             prospects.push(c);
