@@ -2208,16 +2208,16 @@
             nomeMunicipio = cidade?.long_name || '';
             ufSigla = estado?.short_name || '';
           }
-          if(nomeMunicipio && ufSigla) {
-            const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, nomeMunicipio, ufSigla);
-            for(const c of cnpjResults) {
-              const chave = `${c.lat.toFixed(4)}|${c.lng.toFixed(4)}`;
-              if(!vistos.has(chave)) {
-                vistos.add(chave);
-                c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
-                prospects.push(c);
-              }
-            }
+          // Text Search usa vistos separado — não descarta por já estar no Google Nearby
+          const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, nomeMunicipio, ufSigla);
+          const vistosNome = new Set(prospects.map(p => p.nome?.toLowerCase().trim()));
+          for(const c of cnpjResults) {
+            const nomeKey = c.nome?.toLowerCase().trim();
+            // Descarta só se o NOME já está na lista (evita duplicata real)
+            if(vistosNome.has(nomeKey)) continue;
+            vistosNome.add(nomeKey);
+            c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
+            prospects.push(c);
           }
         }
       } catch(e) { console.warn('CNPJ fetch ignorado:', e); }
