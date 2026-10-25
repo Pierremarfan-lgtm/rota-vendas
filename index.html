@@ -2224,8 +2224,7 @@
           for(const c of cnpjResults) {
             const nomeKey = c.nome?.toLowerCase().trim();
             if(vistosNome.has(nomeKey)) continue;
-            // Filtra pela categoria selecionada
-            if(!catsSelecionadas.has(c.cat)) continue;
+            // Text Search já foi feito com termos da categoria certa — não filtra por cat detectada
             vistosNome.add(nomeKey);
             c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
             prospects.push(c);
