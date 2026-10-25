@@ -869,6 +869,7 @@
 
     <!-- ABAS DOS DIAS DO PLANO -->
     <div id="rotDias" style="display:none;gap:6px;overflow-x:auto;padding:10px 16px 0;"></div>
+    <div id="rotVagas" style="display:none;align-items:center;justify-content:space-between;gap:10px;margin:8px 16px 0;padding:10px 12px;border-radius:12px;background:#FFF8E1;border:1.5px solid #FFE082;color:#8A6100;font-size:12px;font-weight:800;"></div>
     <div id="rotReserva" style="display:none;margin:8px 16px 0;padding:8px 12px;border-radius:10px;background:#F2FBF5;color:#1A7A40;font-size:11px;font-weight:800;"></div>
 
     <div style="padding:10px 16px 0">
@@ -923,6 +924,22 @@
     <div class="mactions">
       <button class="mbtn primary" onclick="gerarPlano()">✅ GERAR ROTEIRO</button>
       <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovPlano')">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL COMPLETAR O DIA -->
+<div class="overlay" id="ovCompletar" onclick="closeOv('ovCompletar',event)">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">➕ COMPLETAR O DIA</div>
+    <div class="msub" id="compInfo" style="margin-bottom:10px;"></div>
+    <div id="compTipos" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+    <div id="compLista" style="max-height:38vh;overflow-y:auto;border:1.5px solid var(--xlight);border-radius:12px;margin-bottom:12px;"></div>
+    <div class="mactions">
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="selecionarMaisProximos()">⚡ ESCOLHER OS MAIS PRÓXIMOS</button>
+      <button class="mbtn primary" id="btnCompAdd" onclick="confirmarCompletar()">ADICIONAR</button>
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="closeOv('ovCompletar')">Cancelar</button>
     </div>
   </div>
 </div>
@@ -1642,8 +1659,17 @@
   function renderDias() {
     const caixa = document.getElementById('rotDias');
     const reserva = document.getElementById('rotReserva');
-    if(!caixa || !reserva) return;
-    if(!planoAtual) { caixa.style.display = 'none'; reserva.style.display = 'none'; return; }
+    const vagas = document.getElementById('rotVagas');
+    if(!caixa || !reserva || !vagas) return;
+    if(!planoAtual) { caixa.style.display = 'none'; reserva.style.display = 'none'; vagas.style.display = 'none'; return; }
+    const falta = vagasDoDia();
+    if(roteiroClientes.length > 0 && falta > 0) {
+      vagas.style.display = 'flex';
+      vagas.innerHTML = `<div>⚠️ Faltam <b>${falta}</b> vaga(s) para completar as ${planoAtual.visitasPorDia} visitas do dia</div>
+        <button onclick="abrirCompletar()" style="flex-shrink:0;padding:8px 12px;border-radius:10px;border:none;background:#8A6100;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">➕ COMPLETAR</button>`;
+    } else {
+      vagas.style.display = 'none';
+    }
     if(planoAtual.dias.length > 1) {
       caixa.style.display = 'flex';
       caixa.innerHTML = planoAtual.dias.map((d, i) => {
@@ -1781,6 +1807,106 @@
     closeOv('ovPlano');
     setAppTab('roteiro', null, document.getElementById('nav-roteiro'));
     showToast(`✅ Roteiro pronto: ${total} visita(s) em ${dias.length} dia(s)`);
+  };
+
+  // ── Completar o dia com outros tipos (escolher a dedo ou os mais próximos)
+  let compCands = [];
+  let compSel = new Set();
+  let compTipos = { base: true, novo: true, cnpj: true };
+
+  function vagasDoDia() {
+    return planoAtual ? Math.max(0, planoAtual.visitasPorDia - roteiroClientes.length) : 0;
+  }
+
+  window.abrirCompletar = () => {
+    if(!planoAtual) return;
+    if(vagasDoDia() === 0) { showToast('O dia já está completo'); return; }
+    const emPlano = new Set(planoAtual.dias.flatMap(d => d.itens.map(i => i.id)));
+    const cancel = new Set(planoAtual.cancelados.map(c => c.id));
+    const mapa = new Map();
+    for(const r of planoAtual.reserva) mapa.set(r.id, r);
+    for(const p of prospectsTodos) { const it = prospParaItem(p); if(!mapa.has(it.id)) mapa.set(it.id, it); }
+    compCands = [...mapa.values()].filter(it => !emPlano.has(it.id) && !cancel.has(it.id) && coordsRoteiro(it));
+
+    // Distância contada a partir do centro do dia (ou de você, se o dia estiver vazio)
+    const pts = roteiroClientes.map(coordsRoteiro).filter(Boolean);
+    const cLat = pts.length ? pts.reduce((a, c) => a + c.lat, 0) / pts.length : minhaLat;
+    const cLng = pts.length ? pts.reduce((a, c) => a + c.lng, 0) / pts.length : minhaLng;
+    for(const it of compCands) { const co = coordsRoteiro(it); it._d = cLat ? calcDistancia(cLat, cLng, co.lat, co.lng) : 0; }
+    compCands.sort((a, b) => a._d - b._d);
+
+    compSel = new Set();
+    compTipos = { base: true, novo: true, cnpj: true };
+    renderCompletar();
+    document.getElementById('ovCompletar').classList.add('open');
+  };
+
+  function renderCompletar() {
+    const vagas = vagasDoDia();
+    const visiveis = compCands.map((it, i) => ({ it, i })).filter(x => compTipos[x.it.tipo || 'novo']);
+    const cont = { base: 0, novo: 0, cnpj: 0 };
+    compCands.forEach(it => cont[it.tipo || 'novo']++);
+    const CORES = { base: ['#1A7A40', '🟢 Base'], novo: ['#1565C0', '🔵 Novos'], cnpj: ['#E65100', '🟠 CNPJ'] };
+    document.getElementById('compTipos').innerHTML = ['base', 'novo', 'cnpj'].map(t => {
+      const [cor, rot] = CORES[t]; const on = compTipos[t];
+      return `<button onclick="compAlternarTipo('${t}')" style="padding:8px 12px;border-radius:20px;border:2px solid ${cor};background:${on?cor:'#fff'};color:${on?'#fff':cor};font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">${rot} (${cont[t]})</button>`;
+    }).join('');
+    document.getElementById('compInfo').innerHTML =
+      `Faltam <b>${vagas}</b> vaga(s). Selecionados: <b>${compSel.size}</b> de ${vagas}`;
+    document.getElementById('compLista').innerHTML = visiveis.length === 0
+      ? '<div style="padding:16px;text-align:center;font-size:12px;font-weight:700;color:var(--gray);">Nenhum prospect disponível nesses tipos</div>'
+      : visiveis.map(({ it, i }) => {
+          const on = compSel.has(i);
+          const km = it._d < 1 ? `${(it._d * 1000).toFixed(0)} m` : `${it._d.toFixed(1)} km`;
+          return `<div onclick="alternarComp(${i})" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--xlight);cursor:pointer;background:${on?'#F2FBF5':'#fff'};">
+            <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${on?'#1A7A40':'var(--lgray)'};background:${on?'#1A7A40':'#fff'};color:#fff;font-size:14px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${on?'✓':''}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:800;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${catEmojisProsp[it.categoria]||'🏪'} ${it.nome}</div>
+              <div style="margin-top:3px;">${badgeTipo(it)} <span style="font-size:11px;font-weight:700;color:var(--gray);">~${km} do dia</span></div>
+            </div>
+          </div>`;
+        }).join('');
+    const btn = document.getElementById('btnCompAdd');
+    btn.textContent = compSel.size ? `ADICIONAR (${compSel.size})` : 'ADICIONAR';
+    btn.disabled = compSel.size === 0;
+    btn.style.opacity = compSel.size ? '1' : '.45';
+  }
+
+  window.compAlternarTipo = (t) => { compTipos[t] = !compTipos[t]; renderCompletar(); };
+
+  window.alternarComp = (i) => {
+    if(compSel.has(i)) compSel.delete(i);
+    else {
+      if(compSel.size >= vagasDoDia()) { showToast(`Só há ${vagasDoDia()} vaga(s) neste dia`); return; }
+      compSel.add(i);
+    }
+    renderCompletar();
+  };
+
+  // Marca automaticamente os mais próximos (dos tipos ligados) até encher as vagas
+  window.selecionarMaisProximos = () => {
+    compSel = new Set();
+    for(let i = 0; i < compCands.length && compSel.size < vagasDoDia(); i++) {
+      if(compTipos[compCands[i].tipo || 'novo']) compSel.add(i);
+    }
+    renderCompletar();
+  };
+
+  window.confirmarCompletar = () => {
+    if(compSel.size === 0) return;
+    const escolhidos = [...compSel].sort((a, b) => a - b).slice(0, vagasDoDia()).map(i => compCands[i]);
+    for(const it of escolhidos) {
+      delete it._d;
+      roteiroClientes.push(it);
+      if(it.lat && it.lng) geocodeCache[it.id] = { lat: it.lat, lng: it.lng };
+    }
+    const ids = new Set(escolhidos.map(i => i.id));
+    planoAtual.reserva = planoAtual.reserva.filter(r => !ids.has(r.id));
+    closeOv('ovCompletar');
+    renderRoteiro();
+    atualizarStats();
+    renderClientes(todosClientes);
+    showToast(`✅ ${escolhidos.length} adicionado(s)! Toque em "Ordenar por Proximidade" para reorganizar`);
   };
 
   // ── Cancelar visita (motivo obrigatório) e trocar pelo próximo da reserva
