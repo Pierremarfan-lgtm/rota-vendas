@@ -1826,6 +1826,31 @@
     return 'estetica';
   }
 
+  // Só deixa passar categorias marcadas no filtro
+  function catPermitida(cat) {
+    return catsSelecionadas.has(cat);
+  }
+
+  // Categoria final de um resultado do Text Search (laranja)
+  // Ordem: 1) palavra no nome  2) tipo forte do Google  3) categoria do termo que achou
+  function categoriaFinalTexto(c) {
+    const n = ' ' + (c.nome || '').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase() + ' ';
+    const t = c.types || [];
+    let cat = null;
+    if(/barbear|barber|barbeir/.test(n)) cat = 'barbearia';
+    else if(/esmalt|nail|unha|manicur|pedicur/.test(n)) cat = 'esmalteria';
+    else if(/capilar|tricolog|terapia/.test(n)) cat = 'terapia';
+    else if(/estetic|depila|sobrancelh|micropigment|lash|cilios|harmoniza/.test(n)) cat = 'estetica';
+    else if(/\bspa\b|massag|relax/.test(n)) cat = 'spa';
+    else if(/salao|cabeleireir|cabelereir|coiffeur|hair|cabelo/.test(n)) cat = 'salao';
+    else if(t.includes('barber_shop')) cat = 'barbearia';
+    else if(t.includes('nail_salon')) cat = 'esmalteria';
+    else cat = c.catBusca || 'salao';
+    // Google não separa terapia capilar de salão
+    if(cat === 'salao' && !catsSelecionadas.has('salao') && c.catBusca === 'terapia') cat = 'terapia';
+    return cat;
+  }
+
   // Gera pontos numa grade hexagonal para cobrir o raio completo com círculos menores
   function gerarPontosCobertura(latC, lngC, raioTotalM) {
     // Cada subcírculo tem raio fixo de 2500m (≤50 resultados possíveis por busca)
@@ -1974,9 +1999,18 @@
 
     // Usa só os termos das categorias selecionadas (ou todos se nenhuma selecionada)
     const cats = (categoriasAtivas && categoriasAtivas.length > 0) ? categoriasAtivas : Object.keys(TERMOS_POR_CATEGORIA);
-    const termosBusca = [...new Set(cats.flatMap(cat => TERMOS_POR_CATEGORIA[cat] || []))];
+    // Pares [termo, categoria que pediu esse termo]
+    const termosBusca = [];
+    const termosVistos = new Set();
+    for(const cat of cats) {
+      for(const t of (TERMOS_POR_CATEGORIA[cat] || [])) {
+        if(termosVistos.has(t)) continue;
+        termosVistos.add(t);
+        termosBusca.push([t, cat]);
+      }
+    }
 
-    for(const termo of termosBusca) {
+    for(const [termo, catBusca] of termosBusca) {
       try {
         if(statusEl) statusEl.textContent = `🔍 Buscando "${termo}"...`;
         const payload = {
@@ -2013,7 +2047,9 @@
                 _cnpj: true,
                 lat: pLat, lng: pLng,
                 nome: p.displayName?.text || 'Estabelecimento',
-                cat: detectarCategoriaGoogle(p.types || []),
+                cat: catBusca,
+                catBusca: catBusca,
+                types: p.types || [],
                 cnpj: '',
                 endereco: p.formattedAddress || '',
                 dist: distM / 1000
@@ -2174,7 +2210,9 @@
         const cLng = parseFloat(geocodeCache[c.id]?.lng || c.lng || 0);
         if(!cLat || !cLng) continue;
         const chave = `${cLat.toFixed(4)}|${cLng.toFixed(4)}`;
-        vistos.add(chave); // marca para não duplicar com Google
+        vistos.add(chave); // marca para não duplicar com Google (mesmo se filtrado)
+        // Filtro de categoria também para clientes da base
+        if(!catPermitida(c.categoria || 'salao')) continue;
         const dist = calcDistancia(minhaLat, minhaLng, cLat, cLng);
         prospects.push({
           lat: cLat, lng: cLng, nome: c.nome,
@@ -2192,9 +2230,10 @@
         const chave = `${lat.toFixed(4)}|${lng.toFixed(4)}`;
         if(vistos.has(chave)) continue;
         vistos.add(chave);
-        const cat = detectarCategoriaGoogle(el.types || []);
-        // Filtra: só inclui se a categoria detectada está entre as selecionadas
-        if(!catsSelecionadas.has(cat)) continue;
+        let cat = detectarCategoriaGoogle(el.types || []);
+        // Google não tem tipo "terapia capilar": se só Terapia está marcada, salão vira terapia
+        if(cat === 'salao' && !catsSelecionadas.has('salao') && catsSelecionadas.has('terapia')) cat = 'terapia';
+        if(!catPermitida(cat)) continue;
         const naBase = jaEstaNaBase(nome, lat, lng);
         const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
         prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave, _cnpj: false });
@@ -2220,32 +2259,26 @@
           // Text Search usa vistos separado — não descarta por já estar no Google Nearby
           const categoriasAtivas = [...catsSelecionadas];
           const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, nomeMunicipio, ufSigla, categoriasAtivas);
-          // Palavras no nome que indicam categoria específica (para filtro por nome)
-          const PALAVRAS_CAT = {
-            barbearia: ['barber','barbearia','barbeiro','cabelo masculino'],
-            esmalteria: ['esmalte','esmalteria','nail','unhas','manicure','pedicure'],
-            estetica:   ['estética','estetica','estetic','depilação','depilacao','sobrancelha','micropigment','lash','cílios','cilos'],
-            spa:        [' spa ','massagem','relaxamento','zen'],
-            terapia:    ['terapia capilar','spa capilar','capilar'],
-            salao:      ['salão','salao','cabelereiro','cabeleireiro','coiffeur','hair','studio','espaço beleza','beleza']
-          };
           const vistosNome = new Set(prospects.map(p => p.nome?.toLowerCase().trim()));
           for(const c of cnpjResults) {
             const nomeKey = c.nome?.toLowerCase().trim();
             if(vistosNome.has(nomeKey)) continue;
-            // Verifica se o nome do estabelecimento bate com alguma categoria NÃO selecionada
-            let catNome = null;
-            for(const [cat, palavras] of Object.entries(PALAVRAS_CAT)) {
-              if(palavras.some(p => nomeKey.includes(p))) { catNome = cat; break; }
-            }
-            // Se o nome indica categoria que não está selecionada, descarta
-            if(catNome && !catsSelecionadas.has(catNome)) continue;
+            // Categoria final = mesma que aparece na tela e que decide o filtro
+            c.cat = categoriaFinalTexto(c);
+            if(!catPermitida(c.cat)) continue;
             vistosNome.add(nomeKey);
             c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
             prospects.push(c);
           }
         }
       } catch(e) { console.warn('CNPJ fetch ignorado:', e); }
+
+      // FILTRO FINAL ÚNICO: nada passa se a categoria não estiver selecionada
+      const antes = prospects.length;
+      const filtrados = prospects.filter(p => catPermitida(p.cat));
+      console.log(`[FILTRO] categorias: ${[...catsSelecionadas].join(',')} | ${antes} → ${filtrados.length}`);
+      prospects.length = 0;
+      prospects.push(...filtrados);
 
       prospects.sort((a,b) => a.dist - b.dist);
       prospectsTodos = prospects;
