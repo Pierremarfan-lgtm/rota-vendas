@@ -657,23 +657,10 @@
     <div style="margin:12px 16px 0; background:var(--white); border-radius:16px; padding:16px; box-shadow:var(--shadow);">
       <div style="font-family:'Bebas Neue',sans-serif; font-size:18px; letter-spacing:1.5px; color:var(--black); margin-bottom:12px;">🔍 BUSCAR PROSPECTS</div>
 
-      <!-- Raio personalizado -->
-      <div style="margin-bottom:12px;">
-        <div style="font-size:11px; font-weight:800; color:var(--gray); text-transform:uppercase; letter-spacing:.8px; margin-bottom:6px;">📍 Raio de Busca</div>
-        <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-          <button class="raio-prosp active" onclick="setRaioProsp(500,this)">500m</button>
-          <button class="raio-prosp" onclick="setRaioProsp(1000,this)">1 km</button>
-          <button class="raio-prosp" onclick="setRaioProsp(2000,this)">2 km</button>
-          <button class="raio-prosp" onclick="setRaioProsp(5000,this)">5 km</button>
-          <button class="raio-prosp" onclick="setRaioProsp(10000,this)">10 km</button>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <input type="number" id="raioCustom" placeholder="Raio personalizado (metros)" min="100" max="50000"
-            style="flex:1; padding:10px 12px; border:2px solid var(--xlight); border-radius:11px; background:var(--bg); font-family:'Nunito',sans-serif; font-size:13px; font-weight:700; outline:none; color:var(--dark);"
-            oninput="setRaioCustom(this.value)">
-          <span style="font-size:12px; font-weight:800; color:var(--gray);">m</span>
-        </div>
-        <div id="raioDisplay" style="font-size:12px; font-weight:800; color:var(--green); margin-top:6px;">📏 Raio: 500 metros</div>
+      <!-- Raio fixo 3km -->
+      <div style="margin-bottom:12px; background:#F0F7FF; border-radius:10px; padding:10px 12px; border-left:3px solid #1565C0;">
+        <div style="font-size:12px; font-weight:800; color:#1565C0;">📍 Área de busca: 3 km ao redor de você</div>
+        <div style="font-size:11px; color:var(--gray); margin-top:2px;">Varre toda a região em 7 zonas automaticamente</div>
       </div>
 
       <!-- Categorias para busca -->
@@ -1967,74 +1954,65 @@
     return 'salao';
   }
 
-  async function buscarCNPJ(lat, lng, municipioIbge) {
+  async function buscarCNPJ(lat, lng, nomeMunicipio, ufSigla) {
     const statusEl = document.getElementById('prospStatus');
-    if(statusEl) statusEl.textContent = '📋 Buscando CNPJs do setor (Receita Federal)...';
+    if(statusEl) statusEl.textContent = '📋 Buscando MEIs/empresas do setor...';
 
-    const resultados = [];
+    const comCoords = [];
     const vistos = new Set();
+
+    // Usa BrasilAPI — busca CNPJ por município + CNAE (gratuita, sem chave)
+    // Endpoint: https://brasilapi.com.br/api/cnpj/v1/{cnpj} — apenas lookup individual
+    // Para listagem por município usamos a API ReceitaWS / CNPJ.ws
+    // Alternativa funcional: busca pelo Google Places Text Search com "salão cnpj"
+    // → solução mais confiável: usar Nominatim para geocodificar endereços da ReceitaWS
 
     for(const cnae of CNAES_BELEZA) {
       try {
-        // API pública Brasil.io — dados da Receita Federal
-        const url = `https://brasilapi.com.br/api/cnpj/v1/`;
-        // Usa a API publica CNPJ.ws por município e CNAE
-        const r = await fetch(
-          `https://publica.cnpj.ws/cnpj/pesquisa?municipio=${municipioIbge}&cnae=${cnae}&situacao=A&registros=100`,
-          { headers: { 'Accept': 'application/json' } }
-        );
+        // API CNPJ.ws — listagem por município e CNAE (gratuita, pública)
+        const url = `https://www.receitaws.com.br/v1/cnpj/search?municipio=${encodeURIComponent(nomeMunicipio)}&uf=${ufSigla}&cnae=${cnae}&situacao=ATIVA&page=1`;
+        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
         if(r.ok) {
           const d = await r.json();
-          for(const emp of (d.data || d.cnpjs || [])) {
-            const cnpj = emp.cnpj || emp.ni;
+          for(const emp of (d.empresas || d.data || [])) {
+            const cnpj = emp.cnpj || emp.CNPJ;
             if(cnpj && !vistos.has(cnpj)) {
               vistos.add(cnpj);
-              resultados.push({ ...emp, _cnae: cnae });
+              // Geocodifica o endereço
+              const logr = emp.logradouro || emp.LOGRADOURO || '';
+              const num  = emp.numero || emp.NUMERO || '';
+              const mun  = emp.municipio || nomeMunicipio;
+              const uf   = emp.uf || ufSigla;
+              if(!logr) continue;
+              try {
+                const q = encodeURIComponent(`${logr} ${num}, ${mun}, ${uf}, Brasil`);
+                await new Promise(res => setTimeout(res, 350)); // respeita limite Nominatim
+                const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`,
+                  { headers: { 'Accept-Language': 'pt-BR', 'User-Agent': 'RotaVendasApp/1.0' } });
+                if(gr.ok) {
+                  const gd = await gr.json();
+                  if(gd[0]) {
+                    const eLat = parseFloat(gd[0].lat);
+                    const eLng = parseFloat(gd[0].lon);
+                    const distM = calcDistancia(lat, lng, eLat, eLng) * 1000;
+                    if(distM <= 3000) {
+                      comCoords.push({
+                        _cnpj: true,
+                        lat: eLat, lng: eLng,
+                        nome: emp.fantasia || emp.nome || emp.NOME || 'Estabelecimento',
+                        cat: categoriaDeSegmento(cnae, emp.nome || emp.NOME || ''),
+                        cnpj: cnpj,
+                        endereco: `${logr}${num?', '+num:''}`,
+                        dist: distM / 1000
+                      });
+                    }
+                  }
+                }
+              } catch(eg) { /* geocode falhou, ignora */ }
             }
           }
         }
-      } catch(e) { /* silencioso */ }
-    }
-
-    // Geocodifica endereços via Nominatim (gratuito) — lote de 3 por vez
-    const comCoords = [];
-    const LOTE_GEO = 3;
-    for(let i = 0; i < resultados.length; i += LOTE_GEO) {
-      const lote = resultados.slice(i, i + LOTE_GEO);
-      if(statusEl) statusEl.textContent = `📍 Geocodificando endereços... ${Math.min(i+LOTE_GEO, resultados.length)}/${resultados.length}`;
-      await Promise.all(lote.map(async emp => {
-        try {
-          const logradouro = emp.logradouro || emp.endereco?.logradouro || '';
-          const numero = emp.numero || emp.endereco?.numero || '';
-          const municipio = emp.municipio || emp.endereco?.municipio || '';
-          const uf = emp.uf || emp.endereco?.uf || '';
-          if(!logradouro) return;
-          const q = encodeURIComponent(`${logradouro} ${numero}, ${municipio}, ${uf}, Brasil`);
-          const gr = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`, {
-            headers: { 'Accept-Language': 'pt-BR' }
-          });
-          if(gr.ok) {
-            const gd = await gr.json();
-            if(gd[0]) {
-              const eLat = parseFloat(gd[0].lat);
-              const eLng = parseFloat(gd[0].lon);
-              const distM = calcDistancia(lat, lng, eLat, eLng) * 1000;
-              if(distM <= 3000) {
-                comCoords.push({
-                  _cnpj: true,
-                  lat: eLat, lng: eLng,
-                  nome: emp.nome_fantasia || emp.razao_social || 'Estabelecimento',
-                  cat: categoriaDeSegmento(emp._cnae, emp.razao_social),
-                  cnpj: emp.cnpj || emp.ni,
-                  endereco: `${logradouro}${numero?', '+numero:''}`,
-                  dist: distM / 1000
-                });
-              }
-            }
-          }
-        } catch(e) { /* silencioso */ }
-        await new Promise(r => setTimeout(r, 300)); // respeita limite Nominatim
-      }));
+      } catch(e) { /* CNAE falhou, continua */ }
     }
 
     return comCoords;
@@ -2054,14 +2032,22 @@
 
   // Verifica se prospect já está na base
   function jaEstaNaBase(nome, lat, lng) {
-    if(!nome) return null;
+    if(!nome || !todosClientes || todosClientes.length === 0) return null;
     const nomeLower = nome.toLowerCase().trim();
+    // Remove caracteres especiais para comparação mais flexível
+    const normalizar = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+    const nomeNorm = normalizar(nome);
     return todosClientes.find(c => {
-      if(c.nome?.toLowerCase().trim() === nomeLower) return true;
+      if(!c.nome) return false;
+      if(normalizar(c.nome) === nomeNorm) return true;
+      // Verifica se nome do prospect está contido no nome do cliente ou vice-versa
+      const cNorm = normalizar(c.nome);
+      if(nomeNorm.length > 5 && (cNorm.includes(nomeNorm) || nomeNorm.includes(cNorm))) return true;
+      // Verifica por coordenadas (menos de 80m = mesmo lugar)
       const coords = geocodeCache[c.id] || (c.lat ? {lat:c.lat,lng:c.lng} : null);
       if(coords && lat && lng) {
         const dist = calcDistancia(lat, lng, coords.lat, coords.lng);
-        if(dist < 0.05) return true; // menos de 50m = mesmo lugar
+        if(dist < 0.08) return true;
       }
       return false;
     }) || null;
@@ -2159,25 +2145,24 @@
       }
 
       // 2) Busca CNPJ Receita Federal (complementa com estabelecimentos não no Google)
-      status.textContent = '📋 Buscando CNPJs (Receita Federal)...';
+      status.textContent = '📋 Buscando MEIs/empresas (Receita Federal)...';
       try {
-        // Descobre código IBGE do município via geolocalização reversa
+        // Geolocalização reversa para descobrir município e UF
         const nomUrl = `https://nominatim.openstreetmap.org/reverse?lat=${minhaLat}&lon=${minhaLng}&format=json`;
-        const nomR = await fetch(nomUrl, { headers:{'Accept-Language':'pt-BR'} });
-        let ibgeCod = null;
+        const nomR = await fetch(nomUrl, { headers:{'Accept-Language':'pt-BR','User-Agent':'RotaVendasApp/1.0'} });
         if(nomR.ok) {
           const nomD = await nomR.json();
-          // Tenta extrair código IBGE do campo extra do Nominatim
-          ibgeCod = nomD.address?.['ref:IBGE'] || nomD.extratags?.['IBGE:GEOCODIGO'] || null;
-        }
-        if(ibgeCod) {
-          const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, ibgeCod);
-          for(const c of cnpjResults) {
-            const chave = `${c.lat.toFixed(4)}|${c.lng.toFixed(4)}`;
-            if(!vistos.has(chave)) {
-              vistos.add(chave);
-              c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
-              prospects.push(c);
+          const nomeMunicipio = nomD.address?.city || nomD.address?.town || nomD.address?.village || '';
+          const ufSigla = nomD.address?.['ISO3166-2-lvl4']?.replace('BR-','') || '';
+          if(nomeMunicipio && ufSigla) {
+            const cnpjResults = await buscarCNPJ(minhaLat, minhaLng, nomeMunicipio, ufSigla);
+            for(const c of cnpjResults) {
+              const chave = `${c.lat.toFixed(4)}|${c.lng.toFixed(4)}`;
+              if(!vistos.has(chave)) {
+                vistos.add(chave);
+                c.naBase = jaEstaNaBase(c.nome, c.lat, c.lng);
+                prospects.push(c);
+              }
             }
           }
         }
