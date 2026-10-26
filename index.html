@@ -329,6 +329,7 @@
   .rot-nav-btn { width:34px; height:34px; border-radius:4px; border:none; background:var(--black); display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .rot-remove-btn { width:34px; height:24px; border-radius:3px; border:none; background:#FFF0F0; color:var(--red); font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
   .rot-reg-btn { margin-top:8px; padding:7px 12px; border-radius:4px; border:1.5px solid var(--black); background:#fff; color:var(--black); font-family:'Nunito',sans-serif; font-size:11px; font-weight:800; cursor:pointer; }
+  .rot-reg-btn.pedido { background:var(--black); color:#fff; border-color:var(--black); }
   .rot-reg-btn.feito { border-color:var(--lgray); color:var(--gray); }
   .roteiro-item.feita { background:#FAFAFA; }
   .roteiro-item.feita .rot-name { color:var(--gray); }
@@ -953,6 +954,32 @@
   </div>
 </div>
 
+<!-- PAINEL DO PEDIDO (sistema Spazzio Vendas dentro do app) -->
+<div id="ovPedido" style="display:none;position:fixed;inset:0;z-index:300;background:#fff;flex-direction:column;">
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px, env(safe-area-inset-top));border-bottom:1.5px solid var(--xlight);background:#fff;">
+    <button onclick="voltarDoPedido()" style="flex-shrink:0;padding:10px 12px;border-radius:4px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">← VOLTAR AO CLIENTE</button>
+    <div id="pedidoTitulo" style="flex:1;min-width:0;font-size:12px;font-weight:800;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    <a id="pedidoAbrirFora" href="#" target="_blank" rel="noopener" title="Abrir em outra aba" style="flex-shrink:0;padding:8px 10px;border-radius:4px;border:1.5px solid var(--lgray);color:var(--dark);font-size:12px;font-weight:800;text-decoration:none;">↗</a>
+  </div>
+  <iframe id="pedidoFrame" title="Pedido" style="flex:1;width:100%;border:none;background:#fff;"></iframe>
+</div>
+
+<!-- JANELA: VALOR DO PEDIDO (ao voltar do pedido) -->
+<div class="overlay" id="ovPedidoValor" style="z-index:310;">
+  <div class="modal">
+    <div class="mhandle"></div>
+    <div class="mtitle">🛒 PEDIDO FINALIZADO?</div>
+    <div class="msub" id="pedValNome" style="margin-bottom:12px;"></div>
+    <div style="font-size:11px;font-weight:800;color:var(--gray);margin-bottom:4px;">VALOR TOTAL DO PEDIDO (R$)</div>
+    <input id="pedValValor" type="text" inputmode="decimal" placeholder="Ex.: 1.250,00" oninput="atualizarBotaoPedValor()" style="width:100%;padding:12px;border:2px solid var(--xlight);border-radius:6px;font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;margin-bottom:12px;">
+    <div class="mactions">
+      <button class="mbtn primary" id="btnPedValor" onclick="lancarValorPedido()" disabled style="opacity:.45;">LANÇAR NA VISITA</button>
+      <button class="mbtn sec" style="grid-column:span 2;" onclick="continuarPedido()">CONTINUAR O PEDIDO</button>
+      <button class="mbtn danger" style="grid-column:span 2;" onclick="semPedido()">NÃO FECHOU PEDIDO — SÓ VOLTAR</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL REGISTRAR VISITA -->
 <div class="overlay" id="ovVisita" onclick="closeOv('ovVisita',event)">
   <div class="modal">
@@ -964,6 +991,7 @@
     <div id="visValorBox" style="display:none;margin-bottom:10px;">
       <div style="font-size:11px;font-weight:800;color:var(--gray);margin-bottom:4px;">VALOR DA VENDA (R$)</div>
       <input id="visValor" type="text" inputmode="decimal" placeholder="Ex.: 350,00" oninput="atualizarBotaoVisita()" style="width:100%;padding:11px 12px;border:2px solid var(--xlight);border-radius:6px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;">
+      <button onclick="abrirPedidoDaVisita()" style="width:100%;margin-top:8px;padding:11px;border-radius:6px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">🛒 TIRAR O PEDIDO AGORA (O VALOR ENTRA SOZINHO)</button>
     </div>
     <div id="visDataBox" style="display:none;margin-bottom:10px;">
       <div style="font-size:11px;font-weight:800;color:var(--gray);margin-bottom:4px;">VOLTAR EM</div>
@@ -1896,13 +1924,14 @@
   // Trecho do cartão: resultado já registrado + botão
   function blocoVisita(c) {
     const v = c.visita;
-    if(!v) return `<button class="rot-reg-btn" onclick="event.stopPropagation();abrirVisita('${c.id}')">✔ Registrar visita</button>`;
+    const btnPedido = `<button class="rot-reg-btn pedido" onclick="event.stopPropagation();abrirPedido('${c.id}')">🛒 Pedido</button>`;
+    if(!v) return `<div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="rot-reg-btn" onclick="event.stopPropagation();abrirVisita('${c.id}')">✔ Registrar visita</button>${btnPedido}</div>`;
     const r = RESULTADOS[v.resultado] || RESULTADOS.nao_comprou;
     let txt = r.rot;
-    if(v.resultado === 'comprou') txt += ` • ${brl(v.valor)}`;
+    if(v.resultado === 'comprou') txt += ` • ${brl(v.valor)}${(v.pedidos && v.pedidos.length > 1) ? ' (' + v.pedidos.length + ' pedidos)' : ''}`;
     if(v.resultado === 'voltar' && v.voltarEm) txt += ` • ${dmBR(v.voltarEm)}`;
     return `<div><span class="rot-res ${v.resultado}">${txt}</span></div>
-      <button class="rot-reg-btn feito" onclick="event.stopPropagation();abrirVisita('${c.id}')">✏️ Editar</button>`;
+      <div style="display:flex;gap:6px;flex-wrap:wrap;"><button class="rot-reg-btn feito" onclick="event.stopPropagation();abrirVisita('${c.id}')">✏️ Editar</button>${btnPedido}</div>`;
   }
 
   window.abrirVisita = (id) => {
@@ -1954,7 +1983,8 @@
       data: ymdLocal(agora),
       hora: agora.toTimeString().slice(0, 5),
       gpsLat: minhaLat || null,
-      gpsLng: minhaLng || null
+      gpsLng: minhaLng || null,
+      pedidos: visResultado === 'comprou' ? (it.visita?.pedidos || []) : []
     };
     if(v.resultado === 'comprou' && !(v.valor > 0)) { showToast('Informe o valor da venda'); return; }
     it.visita = v;
@@ -1985,7 +2015,7 @@
       vendedor: currentUser.displayName || currentUser.email || '',
       itemId: it.id, nome: it.nome, tipo: it.tipo || 'base', categoria: it.categoria || '',
       resultado: v.resultado, valor: v.valor, voltarEm: v.voltarEm, obs: v.obs,
-      data: v.data, hora: v.hora, gpsLat: v.gpsLat, gpsLng: v.gpsLng,
+      data: v.data, hora: v.hora, gpsLat: v.gpsLat, gpsLng: v.gpsLng, pedidos: v.pedidos || [],
       lat: coordsRoteiro(it)?.lat ?? null, lng: coordsRoteiro(it)?.lng ?? null,
       diaDoPlano: diaAtual + 1,
       atualizadoEm: serverTimestamp()
@@ -1995,6 +2025,121 @@
       if(!avisouVisitaNuvem) { avisouVisitaNuvem = true; showToast('⚠️ Visita salva só neste aparelho'); }
     });
   }
+
+  // ══════════════════════════════════════════════
+  //  PEDIDO DENTRO DA VISITA (Spazzio Vendas em tela cheia + volta com o valor)
+  // ══════════════════════════════════════════════
+  const URL_PEDIDO = 'https://spazzio-vendas.vercel.app';
+  let pedidoItemId = null;
+
+  window.abrirPedido = (id) => {
+    const it = roteiroClientes.find(c => c.id === id);
+    if(!it) return;
+    pedidoItemId = id;
+    const base = todosClientes.find(c => c.id === id) || {};
+    const qs = new URLSearchParams({ origem: 'rota', cid: id, cliente: it.nome || '' });
+    const tel = it.telefone || base.telefone || base.whatsapp;
+    if(tel) qs.set('tel', tel);
+    const url = `${URL_PEDIDO}/?${qs.toString()}`;
+    document.getElementById('pedidoTitulo').textContent = '🛒 ' + (it.nome || 'Pedido');
+    document.getElementById('pedidoAbrirFora').href = url;
+    document.getElementById('pedidoFrame').src = url;
+    document.getElementById('ovPedido').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.abrirPedidoDaVisita = () => {
+    const id = visItemId;
+    closeOv('ovVisita');
+    if(id) abrirPedido(id);
+  };
+
+  function fecharPainelPedido() {
+    document.getElementById('ovPedido').style.display = 'none';
+    document.getElementById('pedidoFrame').src = 'about:blank';
+    document.body.style.overflow = '';
+    closeOv('ovPedidoValor');
+  }
+
+  // "← Voltar ao cliente": pergunta o valor, a não ser que o pedido já tenha avisado sozinho
+  window.voltarDoPedido = () => {
+    const it = roteiroClientes.find(c => c.id === pedidoItemId);
+    document.getElementById('pedValNome').textContent = it ? it.nome : '';
+    document.getElementById('pedValValor').value = '';
+    atualizarBotaoPedValor();
+    document.getElementById('ovPedidoValor').classList.add('open');
+  };
+
+  window.atualizarBotaoPedValor = () => {
+    const ok = parseValor(document.getElementById('pedValValor').value) > 0;
+    const b = document.getElementById('btnPedValor');
+    b.disabled = !ok;
+    b.style.opacity = ok ? '1' : '.45';
+  };
+
+  window.continuarPedido = () => closeOv('ovPedidoValor');
+
+  window.semPedido = () => {
+    pedidoItemId = null;
+    fecharPainelPedido();
+    renderRoteiro();
+  };
+
+  window.lancarValorPedido = () => {
+    const valor = parseValor(document.getElementById('pedValValor').value);
+    if(!(valor > 0)) return;
+    aplicarPedido(pedidoItemId, valor, '');
+  };
+
+  // Lança o pedido na visita: marca Comprou, soma o valor e volta para o cartão do cliente
+  function aplicarPedido(id, valor, numero) {
+    const it = roteiroClientes.find(c => c.id === id);
+    if(!it || !(valor > 0)) return false;
+    const agora = new Date();
+    const ant = it.visita || null;
+    const anterior = (ant && ant.resultado === 'comprou') ? (ant.valor || 0) : 0;
+    const pedidos = [...((ant && ant.pedidos) || [])];
+    if(ant && ant.resultado === 'comprou' && anterior > 0 && pedidos.length === 0) {
+      pedidos.push({ valor: anterior, numero: '', hora: ant.hora || '' });   // valor digitado antes, sem pedido
+    }
+    pedidos.push({ valor, numero: String(numero || ''), hora: agora.toTimeString().slice(0, 5) });
+    const v = {
+      resultado: 'comprou',
+      valor: pedidos.reduce((a, p) => a + (p.valor || 0), 0),
+      voltarEm: '',
+      obs: (ant && ant.obs) || '',
+      data: (ant && ant.data) || ymdLocal(agora),
+      hora: (ant && ant.hora) || agora.toTimeString().slice(0, 5),
+      gpsLat: (ant && ant.gpsLat) ?? (minhaLat || null),
+      gpsLng: (ant && ant.gpsLng) ?? (minhaLng || null),
+      pedidos
+    };
+    it.visita = v;
+    registrarLogVisita(it, v);
+    pedidoItemId = null;
+    fecharPainelPedido();
+    renderRoteiro();
+    const idx = roteiroClientes.findIndex(c => c.id === id);
+    const prox = roteiroClientes.find(c => !c.visita);
+    showToast(prox
+      ? `✅ Pedido de ${brl(valor)} lançado • Próxima: ${prox.nome}`
+      : `✅ Pedido de ${brl(valor)} lançado • 🎉 Todas as visitas feitas!`);
+    setTimeout(() => document.getElementById('rotcard_' + idx)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
+    return true;
+  }
+
+  // O sistema de pedidos pode avisar o valor sozinho (postMessage). Só aceita do endereço oficial.
+  window.addEventListener('message', (e) => {
+    if(e.origin !== URL_PEDIDO) return;
+    const d = e.data;
+    if(!d || d.origem !== 'spazzio-vendas') return;
+    if(d.tipo === 'voltar') { pedidoItemId = null; fecharPainelPedido(); return; }
+    if(d.tipo !== 'pedido_finalizado' || !pedidoItemId) return;
+    if(d.clienteId && d.clienteId !== pedidoItemId) return;
+    const valor = (typeof d.valor === 'number') ? d.valor : parseValor(d.valor);
+    if(!(valor > 0)) return;
+    aplicarPedido(pedidoItemId, valor, d.numero);
+  });
 
   // Texto do relatório do dia
   function montarRelatorio() {
@@ -2025,7 +2170,7 @@
       const v = c.visita;
       let linha = `${i + 1}. ${c.nome} — `;
       if(!v) linha += '⏳ Pendente';
-      else if(v.resultado === 'comprou') linha += `✅ Comprou ${brl(v.valor)}`;
+      else if(v.resultado === 'comprou') linha += `✅ Comprou ${brl(v.valor)}${(v.pedidos && v.pedidos.length > 1) ? ' (' + v.pedidos.length + ' pedidos)' : ''}`;
       else if(v.resultado === 'nao_comprou') linha += '❌ Não comprou';
       else linha += `🔁 Voltar em ${dmBR(v.voltarEm)}`;
       if(v && v.obs) linha += ` (${v.obs})`;
@@ -2298,7 +2443,7 @@
         distTxt = `<span class="rot-dist">${i === 0 ? '📍 de você' : '↪ da anterior'}: ~${txt}</span>`;
       }
       return `
-      <div class="roteiro-item ${c.visita ? 'feita' : ''}" onclick="abrirCliente('${c.id}')">
+      <div class="roteiro-item ${c.visita ? 'feita' : ''}" id="rotcard_${i}" onclick="abrirCliente('${c.id}')">
         <div class="rot-num">${i+1}</div>
         <div class="rot-info">
           <div class="rot-name">${catEmojis[c.categoria]||'🏪'} ${c.nome}</div>
