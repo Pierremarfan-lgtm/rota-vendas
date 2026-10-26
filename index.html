@@ -957,7 +957,7 @@
 <!-- PAINEL DO PEDIDO (sistema Spazzio Vendas dentro do app) -->
 <div id="ovPedido" style="display:none;position:fixed;inset:0;z-index:300;background:#fff;flex-direction:column;">
   <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px, env(safe-area-inset-top));border-bottom:1.5px solid var(--xlight);background:#fff;">
-    <button onclick="voltarDoPedido()" style="flex-shrink:0;padding:10px 12px;border-radius:4px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">← VOLTAR AO CLIENTE</button>
+    <button id="btnVoltarPedido" onclick="voltarDoPedido()" style="flex-shrink:0;padding:10px 12px;border-radius:4px;border:none;background:var(--black);color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:800;cursor:pointer;">← VOLTAR AO CLIENTE</button>
     <div id="pedidoTitulo" style="flex:1;min-width:0;font-size:12px;font-weight:800;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
     <a id="pedidoAbrirFora" href="#" target="_blank" rel="noopener" title="Abrir em outra aba" style="flex-shrink:0;padding:8px 10px;border-radius:4px;border:1.5px solid var(--lgray);color:var(--dark);font-size:12px;font-weight:800;text-decoration:none;">↗</a>
   </div>
@@ -1634,6 +1634,7 @@
       lat: co ? co.lat : null, lng: co ? co.lng : null,
       _isProspect: !!c._isProspect, _prospId: c._prospId || '',
       tipo: c.tipo || (c._isProspect ? 'novo' : 'base'),
+      endereco: c.endereco || '', cep: c.cep || '', cnpj: c.cnpj || '',
       visita: c.visita || null
     };
   }
@@ -1652,7 +1653,7 @@
       prioridade: 'Média',
       logradouro: p.tags?.['addr:street'] || '', numero: p.tags?.['addr:housenumber'] || '',
       cidade: p.tags?.['addr:city'] || '', lat: p.lat, lng: p.lng, _isProspect: true,
-      tipo: tipoDe(p)
+      tipo: tipoDe(p), endereco: p.endereco || '', cnpj: p.cnpj || ''
     });
   }
 
@@ -2032,21 +2033,64 @@
   const URL_PEDIDO = 'https://spazzio-vendas.vercel.app';
   let pedidoItemId = null;
 
+  // Separa "R. Fulano, 123 - Centro, Campos dos Goytacazes - RJ, 28010-000, Brasil" (formato do Google)
+  function parseEnderecoGoogle(txt) {
+    const r = { logradouro: '', numero: '', bairro: '', cidade: '', uf: '', cep: '' };
+    if(!txt) return r;
+    const partes = txt.split(',').map(x => x.trim()).filter(Boolean).filter(x => !/^brasil$/i.test(x));
+    const mCep = txt.match(/\b(\d{5})-?(\d{3})\b/);
+    if(mCep) r.cep = mCep[1] + '-' + mCep[2];
+    const semCep = partes.filter(x => !/^\d{5}-?\d{3}$/.test(x));
+    // última parte útil: "Cidade - UF"
+    const ult = semCep[semCep.length - 1] || '';
+    const mCid = ult.match(/^(.+?)\s*-\s*([A-Z]{2})$/);
+    if(mCid) { r.cidade = mCid[1].trim(); r.uf = mCid[2]; semCep.pop(); }
+    if(semCep.length) r.logradouro = semCep[0];
+    if(semCep.length > 1) {
+      const m2 = semCep[1].match(/^([^-]+?)\s*-\s*(.+)$/);
+      if(m2) { r.numero = m2[1].trim(); r.bairro = m2[2].trim(); }
+      else if(/^\d+\w*$/.test(semCep[1]) || /^s\/?n$/i.test(semCep[1])) { r.numero = semCep[1]; if(semCep[2]) r.bairro = semCep[2]; }
+      else r.bairro = semCep[1];
+    }
+    if(!/^\d+\w*$|^s\/?n$/i.test(r.numero)) { if(r.numero && !r.bairro) r.bairro = r.numero; r.numero = r.numero && /^\d/.test(r.numero) ? r.numero : ''; }
+    return r;
+  }
+  const ROTULO_CAT = { salao: 'Salão de beleza', barbearia: 'Barbearia', esmalteria: 'Esmalteria', terapia: 'Terapia capilar', estetica: 'Estética', spa: 'Spa' };
+
+  let pedidoLancado = false;
+
   window.abrirPedido = (id) => {
     const it = roteiroClientes.find(c => c.id === id);
     if(!it) return;
     pedidoItemId = id;
+    pedidoLancado = false;
+    atualizarBotaoVoltar();
     const base = todosClientes.find(c => c.id === id) || {};
-    const qs = new URLSearchParams({ origem: 'rota', cid: id, cliente: it.nome || '' });
+    const qs = new URLSearchParams({ origem: 'rota', cid: id, cliente: it.nome || '', tipo: it.tipo || '' });
     const tel = it.telefone || base.telefone || base.whatsapp;
     if(tel) qs.set('tel', tel);
-    const url = `${URL_PEDIDO}/?${qs.toString()}`;
+    // endereço: usa o que o item já tem; se só veio o texto do Google, separa em partes
+    const g = (it.logradouro || it.bairro) ? {} : parseEnderecoGoogle(it.endereco);
+    const campos = {
+      logradouro: it.logradouro || g.logradouro, numero: it.numero || g.numero, bairro: it.bairro || g.bairro,
+      cidade: it.cidade || g.cidade, uf: it.uf || g.uf, cep: it.cep || base.cep || g.cep,
+      cnpj: it.cnpj || base.cnpj, segmento: ROTULO_CAT[it.categoria] || '', endereco: it.endereco
+    };
+    Object.entries(campos).forEach(([k, v]) => { if(v) qs.set(k, String(v)); });
+    const url = `${URL_PEDIDO}/?${qs.toString()}#/pedidos/novo`;
     document.getElementById('pedidoTitulo').textContent = '🛒 ' + (it.nome || 'Pedido');
     document.getElementById('pedidoAbrirFora').href = url;
     document.getElementById('pedidoFrame').src = url;
     document.getElementById('ovPedido').style.display = 'flex';
     document.body.style.overflow = 'hidden';
   };
+
+  function atualizarBotaoVoltar() {
+    const b = document.getElementById('btnVoltarPedido');
+    if(!b) return;
+    b.textContent = pedidoLancado ? '✅ VOLTAR AO CLIENTE' : '← VOLTAR AO CLIENTE';
+    b.style.background = pedidoLancado ? '#1f9d6b' : 'var(--black)';
+  }
 
   window.abrirPedidoDaVisita = () => {
     const id = visItemId;
@@ -2063,6 +2107,7 @@
 
   // "← Voltar ao cliente": pergunta o valor, a não ser que o pedido já tenha avisado sozinho
   window.voltarDoPedido = () => {
+    if(pedidoLancado) { voltarParaCard(pedidoItemId); return; }   // pedido já chegou sozinho: só volta
     const it = roteiroClientes.find(c => c.id === pedidoItemId);
     document.getElementById('pedValNome').textContent = it ? it.nome : '';
     document.getElementById('pedValValor').value = '';
@@ -2092,7 +2137,7 @@
   };
 
   // Lança o pedido na visita: marca Comprou, soma o valor e volta para o cartão do cliente
-  function aplicarPedido(id, valor, numero) {
+  function aplicarPedido(id, valor, numero, manterAberto = false) {
     const it = roteiroClientes.find(c => c.id === id);
     if(!it || !(valor > 0)) return false;
     const agora = new Date();
@@ -2116,16 +2161,33 @@
     };
     it.visita = v;
     registrarLogVisita(it, v);
+    if(manterAberto) {
+      // pedido veio sozinho do Spazzio Vendas: lança o valor e deixa a tela aberta (enviar ao cliente, etc.)
+      pedidoLancado = true;
+      atualizarBotaoVoltar();
+      renderRoteiro();
+      showToast(`✅ Pedido de ${brl(valor)} lançado na visita`);
+      return true;
+    }
+    voltarParaCard(id, valor);
+    return true;
+  }
+
+  // Fecha o painel do pedido e leva o vendedor de volta ao cartão do cliente
+  function voltarParaCard(id, valor) {
+    const it = roteiroClientes.find(c => c.id === id);
     pedidoItemId = null;
+    pedidoLancado = false;
+    atualizarBotaoVoltar();
     fecharPainelPedido();
     renderRoteiro();
     const idx = roteiroClientes.findIndex(c => c.id === id);
     const prox = roteiroClientes.find(c => !c.visita);
+    const val = valor || (it && it.visita && it.visita.valor) || 0;
     showToast(prox
-      ? `✅ Pedido de ${brl(valor)} lançado • Próxima: ${prox.nome}`
-      : `✅ Pedido de ${brl(valor)} lançado • 🎉 Todas as visitas feitas!`);
+      ? `✅ Pedido de ${brl(val)} lançado • Próxima: ${prox.nome}`
+      : `✅ Pedido de ${brl(val)} lançado • 🎉 Todas as visitas feitas!`);
     setTimeout(() => document.getElementById('rotcard_' + idx)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150);
-    return true;
   }
 
   // O sistema de pedidos pode avisar o valor sozinho (postMessage). Só aceita do endereço oficial.
@@ -2138,7 +2200,7 @@
     if(d.clienteId && d.clienteId !== pedidoItemId) return;
     const valor = (typeof d.valor === 'number') ? d.valor : parseValor(d.valor);
     if(!(valor > 0)) return;
-    aplicarPedido(pedidoItemId, valor, d.numero);
+    aplicarPedido(pedidoItemId, valor, d.numero, true);
   });
 
   // Texto do relatório do dia
@@ -2905,7 +2967,7 @@
         headers: {
           'Content-Type': 'application/json',
           'X-Goog-Api-Key': GPLACES_KEY,
-          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.types'
+          'X-Goog-FieldMask': 'places.id,places.displayName,places.location,places.types,places.formattedAddress'
         },
         body: JSON.stringify(body),
         signal: ctrl.signal
@@ -3234,7 +3296,7 @@
         if(!catPermitida(cat)) continue;
         const naBase = jaEstaNaBase(nome, lat, lng);
         const dist = calcDistancia(minhaLat, minhaLng, lat, lng);
-        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave, _cnpj: false });
+        prospects.push({ lat, lng, nome, cat, naBase, dist, tags: {}, osmId: el.id || chave, _cnpj: false, endereco: el.formattedAddress || '' });
       }
 
       // 2) Busca CNPJ Receita Federal (complementa com estabelecimentos não no Google)
